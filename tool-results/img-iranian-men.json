@@ -1,0 +1,86 @@
+{
+  "success": true,
+  "query": "portrait photograph of an Iranian man neutral expression front facing plain background",
+  "count": 11,
+  "ranked": true,
+  "captioned_count": 11,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/22cfa95355d1.jpg",
+      "caption": "Close-up portrait of a teenage boy with brown hair and slight acne on a white background; contains Shutterstock watermarks and text (\"shutterstock\", \"Amazingmikael\", IMAGE ID: 594254084).",
+      "source": "Shutterstock",
+      "original_width": "1001px",
+      "original_height": "1600px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/83fcbc8affa5.jpg",
+      "caption": "A mustached young man in a white shirt poses against a green background; watermarked with Shutterstock and Ranta Images logos.",
+      "source": "Shutterstock",
+      "original_width": "1500px",
+      "original_height": "1101px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/04608919e7ba.jpg",
+      "caption": "Teenage boy in blue denim shirt and jeans standing against white background; image has 123RF watermarks.",
+      "source": "123RF",
+      "original_width": "867px",
+      "original_height": "1300px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/c39db57603f6.jpg",
+      "caption": "A serious young man in a blue sweater stands with arms crossed against a light gray wall. Contains 123RF watermarks.",
+      "source": "123RF",
+      "original_width": "1300px",
+      "original_height": "867px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/4acfcb7ffa85.jpg",
+      "caption": "A collage of six professional headshots showing the same smiling bearded man in different outfits against dark backgrounds; no watermarks or text.",
+      "source": "LinkedIn",
+      "original_width": "1280px",
+      "original_height": "720px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/b79facbd7f98.jpg",
+      "caption": "Close-up of gray-haired older man in blue suit speaking with headset microphone, dark background, no text or watermarks.",
+      "source": "Swissinfo",
+      "original_width": "1400px",
+      "original_height": "1050px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/df0dc3a639be.jpg",
+      "caption": "A smiling middle-aged man with glasses and reddish-blond beard, wearing a suit, speaking into a microphone against a wooden background.",
+      "source": "The New York Times",
+      "original_width": "2048px",
+      "original_height": "1365px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/1fc7776b92ee.jpg",
+      "caption": "Young Asian man in side profile against dark gray background; contains Shutterstock watermarks, \"Tom Wang\" text, IMAGE ID 1251781456.",
+      "source": "Shutterstock",
+      "original_width": "1500px",
+      "original_height": "1182px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/4eca4921ab6c.jpg",
+      "caption": "A serious elderly man with white hair rests his chin on clasped hands, wearing a black watch and red lanyard.",
+      "source": "WSJ",
+      "original_width": "1280px",
+      "original_height": "1280px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/8c651bad6577.png",
+      "caption": "A woman wearing a red headscarf gazes calmly against a matching deep red curtain backdrop. Suitable for background image",
+      "source": "SplitShire",
+      "original_width": "768px",
+      "original_height": "1376px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/6da01547eb52.png",
+      "caption": "A stern mustached soldier in tactical gear holding a rifle stands before a weathered Iranian flag backdrop, appearing AI-generated.",
+      "source": "SplitShire",
+      "original_width": "1024px",
+      "original_height": "1024px"
+    }
+  ]
+}

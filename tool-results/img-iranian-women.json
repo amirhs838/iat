@@ -1,0 +1,93 @@
+{
+  "success": true,
+  "query": "portrait photograph of an Iranian woman wearing simple headscarf neutral expression plain background",
+  "count": 12,
+  "ranked": true,
+  "captioned_count": 12,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/8c651bad6577.png",
+      "caption": "A woman wearing a dark red headscarf poses against red curtains, monochromatic red tones, no text, high clarity, strong visual impact, no watermark, suitable for background image",
+      "source": "SplitShire",
+      "original_width": "768px",
+      "original_height": "1376px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/95e613404b8e.jpg",
+      "caption": "A young woman in profile wearing a vibrant floral headscarf, eyes closed, against a blurred rocky background. Contains Alamy watermarks and text: \"alamy\", \"Image ID: 3DY039H\", \"www.alamy.com\".",
+      "source": "Alamy",
+      "original_width": "1300px",
+      "original_height": "956px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/f19c25ea4efd.jpg",
+      "caption": "Two women wearing matching brown plaid hijabs embrace closely against a plain light gray background; clear, no text or watermarks.",
+      "source": "velascarves.com",
+      "original_width": "1394px",
+      "original_height": "995px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/42dd57f946bc.jpg",
+      "caption": "A hijab-wearing woman frowns at an empty wallet against a yellow background; contains Shutterstock watermarks and text (Sewupari Studio, IMAGE ID: 2502173391).",
+      "source": "Shutterstock",
+      "original_width": "1500px",
+      "original_height": "1099px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/f2094dfab3c7.jpg",
+      "caption": "Two women wearing elegant emerald green hijabs pose together against a plain light background; high quality, no text or watermarks. Suitable for background image.",
+      "source": "velascarves.com",
+      "original_width": "1803px",
+      "original_height": "1287px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/a9fded42d840.jpg",
+      "caption": "Close-up portrait of an elderly man wearing thick dark-framed glasses, wrinkles visible, warm dim lighting, film grain, no text.",
+      "source": "The New Yorker",
+      "original_width": "1711px",
+      "original_height": "962px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/81bbeebdb842.jpg",
+      "caption": "A smiling woman holds a joyful baby in a blue polka-dot dress indoors; no text or watermarks.",
+      "source": "John Robshaw Textiles",
+      "original_width": "1080px",
+      "original_height": "811px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/e7a2ed5f2631.webp",
+      "caption": "Elderly woman in white hijab reading a worn book in a rustic wooden interior; \"harraku\" watermark present.",
+      "source": "Harraku",
+      "original_width": "2048px",
+      "original_height": "2048px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/acee5d36e01f.jpg",
+      "caption": "A blonde woman in a cream blouse wearing an ornate floral paisley scarf in pink and teal tones, high clarity, suitable for background image",
+      "source": "Etsy",
+      "original_width": "1280px",
+      "original_height": "1196px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/b6ac5290a8e1.png",
+      "caption": "A woman in traditional embroidered dress and headscarves stands in profile beside a sunlit window, no text.",
+      "source": "Easy-Peasy.AI",
+      "original_width": "1024px",
+      "original_height": "1024px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/739164f784e9.jpg",
+      "caption": "A framed oil portrait painting of a young person in warm earthy tones, signed \"M. Cannt\" in the corner.",
+      "source": "eBay UK",
+      "original_width": "2000px",
+      "original_height": "2279px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/7cd0b06c6aba.jpg",
+      "caption": "Vintage engraving of a solemn woman wearing a dark lace veil and shawl; signed \"E.WIMBRIDGE. SC 78\".",
+      "source": "Project Gutenberg",
+      "original_width": "1000px",
+      "original_height": "1167px"
+    }
+  ]
+}

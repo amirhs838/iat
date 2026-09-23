@@ -1,0 +1,29 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "external": {},
+    "html": "<html><head>\n<title>Not Found</title>\n</head>\n<body>\n<h1>Not Found</h1>\n<p>\nThe requested resource                 does not exist on this server.\n\n</p></body></html>",
+    "httpStatus": 404,
+    "httpStatusText": "",
+    "metadata": {},
+    "title": "Not Found",
+    "url": "https://faculty.washington.edu/agg/iat.materials.html",
+    "usage": {
+      "measuredTokens": 0,
+      "outputTokens": 0,
+      "scaledTokens": 45,
+      "tokens": 45
+    },
+    "warning": "Target URL returned error 404: Not Found"
+  },
+  "meta": {
+    "usage": {
+      "measuredTokens": 0,
+      "outputTokens": 0,
+      "scaledTokens": 45,
+      "tokens": 45
+    }
+  },
+  "status": 20000
+}

@@ -1,0 +1,246 @@
+// =============================================================================
+// IAT Research Platform — Prisma Schema
+// -----------------------------------------------------------------------------
+// DATABASE NOTE (documented deviation):
+//   The research target environment is PostgreSQL. This sandbox only ships
+//   SQLite, therefore the schema is written to be 100% PostgreSQL-portable:
+//     - No SQLite-specific column types are used.
+//     - Enum-like fields are stored as String with documented allowed values
+//       (validated at the application layer with zod + TS union types).
+//     - JSON documents are stored as TEXT/String and (de)serialized in code.
+//   To migrate to PostgreSQL on a VPS:
+//     1) Change `provider = "sqlite"` below to `provider = "postgresql"`.
+//     2) Set DATABASE_URL to the Postgres connection string.
+//     3) Run `npx prisma migrate dev --name init_postgres` (or `prisma db push`).
+//   See README.md → "Deployment (VPS)".
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Admin authentication
+// -----------------------------------------------------------------------------
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  // scrypt hash: scrypt$N$r$p$salt$hash (see src/lib/auth/password.ts)
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLoginAt  DateTime?
+  sessions     AdminSession[]
+}
+
+model AdminSession {
+  id          String    @id @default(cuid())
+  // SHA-256 of the opaque session token stored in the httpOnly cookie
+  tokenHash   String    @unique
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  ip          String?
+  userAgent   String?
+
+  @@index([adminUserId])
+}
+
+// -----------------------------------------------------------------------------
+// Participants & sessions
+// -----------------------------------------------------------------------------
+
+model Participant {
+  id          String    @id @default(cuid())
+  // Random, non-identifying code shown to researchers, e.g. "P-7K3M9QX2"
+  anonymousId String    @unique
+  age         Int?
+  gender      String?
+  education   String?
+  province    String?
+  consent     Boolean   @default(false)
+  consentAt   DateTime?
+  createdAt   DateTime  @default(now())
+  sessions    Session[]
+}
+
+model TestVersion {
+  id             String     @id @default(cuid())
+  name           String
+  version        String // semver, e.g. "1.0.0"
+  code           String     @unique // stable code, e.g. "iranian-afghan-att-v1"
+  // Full configuration snapshot (JSON as TEXT for SQLite/Postgres portability):
+  // categories, stimuli, labels, block configuration, timing constants.
+  configJson     String
+  scoringVersion String // e.g. "improved-d-2003/v1"
+  blockStructure String // e.g. "20/20/20/40/40/20/40"
+  active         Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  sessions       Session[]
+  stimuli        Stimulus[]
+}
+
+// Session lifecycle:
+//   CREATED -> RUNNING -> COMPLETED
+//                       -> ABANDONED   (refresh/close mid-test, stale sweep)
+//                       -> INVALID     (server-side data validation failure)
+//        PENDING_SYNC    (client could not upload; retried later -> COMPLETED)
+model Session {
+  id                    String      @id @default(cuid())
+  participantId         String
+  participant           Participant @relation(fields: [participantId], references: [id])
+  testVersionId         String
+  testVersion           TestVersion @relation(fields: [testVersionId], references: [id])
+  // Counterbalancing: "A" = Iranian+Positive paired in blocks 3-4 (first),
+  //                   "B" = Iranian+Negative paired in blocks 3-4 (first).
+  conditionOrder        String // "A" | "B"
+  // Canonical block-order description, e.g. "1:TD,2:AD,3:C,4:C,5:TDR,6:CR,7:CR"
+  blockOrder            String
+  // Seed used by the deterministic sequence generator (16 hex chars)
+  randomSeed            String
+  // Full trial-plan snapshot (JSON as TEXT) — makes every session reproducible
+  blockPlanJson         String
+  status                String      @default("CREATED")
+  startedAt             DateTime?
+  completedAt           DateTime?
+  abandonedAt           DateTime?
+  // Client environment (collected during compatibility check)
+  userAgent             String?
+  browser               String?
+  browserVersion        String?
+  operatingSystem       String?
+  screenWidth           Int?
+  screenHeight          Int?
+  deviceType            String?
+  language              String?
+  // Quality metadata (never mutates timing data)
+  fullscreenExitCount   Int         @default(0)
+  fullscreenDenied      Boolean     @default(false)
+  visibilityChangeCount Int         @default(0)
+  awayDurationMs        Int         @default(0)
+  exclusionReason       String?
+  qualityFlags          String? // JSON array of quality flag strings
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  trials                Trial[]
+  scores                Score[]
+
+  @@index([status])
+  @@index([testVersionId])
+  @@index([createdAt])
+  @@index([participantId])
+}
+
+// -----------------------------------------------------------------------------
+// Raw trial data — what the browser actually observed. NEVER overwritten.
+// Preprocessing happens only in the scoring layer (see /docs/IAT_SCORING.md).
+// -----------------------------------------------------------------------------
+
+model Trial {
+  id                 String  @id @default(cuid())
+  sessionId          String
+  session            Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  blockNumber        Int // 1..7
+  trialNumberInBlock Int // 1-based within block
+  globalTrialNumber  Int // 1-based across the whole session (1..200)
+  stimulusId         String // stable stimulus key from configuration
+  // For images: the public path served to the client.
+  // For words: the literal word text (stimulusType == "word").
+  stimulusPath       String
+  stimulusType       String // "image" | "word"
+  stimulusCategory   String // actual category of the displayed stimulus
+  // Block pairing context (combined blocks): the target x attribute pairing
+  // that shares a response key in this block. Single-discrimination blocks
+  // store their category in targetCategory and "" in attributeCategory.
+  targetCategory     String
+  attributeCategory  String
+  correctKey         String // "E" | "I"
+  responseKey        String? // first response key observed ("E" | "I")
+  correct            Boolean // whether the FIRST response was correct
+  // Raw latency (ms) from stimulus onset to the FIRST keypress.
+  // This value is never transformed — scoring works on a derived copy.
+  rt                 Int?
+  // Latency (ms) from stimulus onset to the CORRECT keypress (error trials).
+  correctionRt       Int?
+  errorCount         Int     @default(0) // number of incorrect keypresses in the trial
+  // Client clock at stimulus onset (informational; RT is the scientific measure).
+  // Stored as DateTime (epoch-ms client timestamps overflow SQLite Int32).
+  timestamp          DateTime
+  // Ingest-time flags (JSON array), e.g. ["implausible_rt","missing_rt"]
+  flags              String?
+
+  @@index([sessionId])
+  @@index([sessionId, blockNumber])
+}
+
+// -----------------------------------------------------------------------------
+// Scores — derived data. Raw trials above are the source of truth.
+// One row per (session, scoringAlgorithm): improved + conventional coexist
+// but are never mixed. MVP result page uses ONLY "improved-d-2003".
+// -----------------------------------------------------------------------------
+
+model Score {
+  id               String   @id @default(cuid())
+  sessionId        String
+  session          Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  // "improved-d-2003" (recommended, Greenwald et al. 2003)
+  // "conventional-2003" (reference/legacy, inactive by default)
+  scoringAlgorithm String
+  scoringVersion   String // e.g. "improved-d-2003/v1"
+  // D in procedure-native direction: positive = initial pairing (blocks 3-4) faster
+  dScore           Float?
+  // Sign-normalized: positive = stronger Iranian+Positive / Afghan+Negative
+  // association, regardless of counterbalancing condition.
+  normalizedD      Float?
+  d1               Float? // standardized difference B6 - B3
+  d2               Float? // standardized difference B7 - B4
+  b3Mean           Float?
+  b4Mean           Float?
+  b6Mean           Float?
+  b7Mean           Float?
+  pooledSdPractice Float? // pooled SD over blocks 3 + 6
+  pooledSdTest     Float? // pooled SD over blocks 4 + 7
+  errorRate        Float?
+  fastResponseRate Float?
+  valid            Boolean
+  exclusionReason  String?
+  qualityFlags     String? // JSON array
+  // Detailed counters: ingested, slowRemoved, fastTrials, penalizedErrors,
+  // missingRt, per-block Ns, etc. (JSON as TEXT)
+  statsJson        String?
+  computedAt       DateTime @default(now())
+
+  @@unique([sessionId, scoringAlgorithm])
+  @@index([sessionId])
+}
+
+// -----------------------------------------------------------------------------
+// Stimulus registry — mirrors the configuration file (seeded), used by the
+// admin stimuli page. The runtime source of truth is the configuration;
+// this table provides DB-level metadata + versioning for research exports.
+// -----------------------------------------------------------------------------
+
+model Stimulus {
+  id            String      @id @default(cuid())
+  stimulusKey   String      @unique // stable key, e.g. "iranian-01", "pos-03"
+  type          String // "image" | "word"
+  category      String // "iranian" | "afghan" | "positive" | "negative"
+  path          String // public path (images) or literal word (words)
+  label         String? // human-readable label for admin UI
+  description   String? // per-slot methodological spec (what this image must show)
+  version       String // stimulus set version
+  active        Boolean     @default(true)
+  sortOrder     Int         @default(0)
+  uploadedAt    DateTime? // when the current file was uploaded via the admin panel (null = seeded reference set)
+  testVersionId String
+  testVersion   TestVersion @relation(fields: [testVersionId], references: [id])
+
+  @@index([testVersionId, category])
+}

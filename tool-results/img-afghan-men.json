@@ -1,0 +1,93 @@
+{
+  "success": true,
+  "query": "portrait photograph of an Afghan man neutral expression front facing plain background",
+  "count": 12,
+  "ranked": true,
+  "captioned_count": 1,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/71065738478e.jpg",
+      "caption": "",
+      "source": "Alamy",
+      "original_width": "866px",
+      "original_height": "1390px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/585794ce6ea6.jpg",
+      "caption": "",
+      "source": "Britannica",
+      "original_width": "1600px",
+      "original_height": "1066px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/50732a5c04dd.jpg",
+      "caption": "",
+      "source": "The New Yorker",
+      "original_width": "1978px",
+      "original_height": "2560px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/ab2214d1b247.jpg",
+      "caption": "",
+      "source": "eBay",
+      "original_width": "994px",
+      "original_height": "1200px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/a8dd21bb1f31.png",
+      "caption": "",
+      "source": "Todd Wexler",
+      "original_width": "1080px",
+      "original_height": "1080px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/c7a5a3f5c8d6.jpg",
+      "caption": "A close-up portrait of a man wearing black sunglasses, a denim jacket, and a white shirt, outdoors in sunlight. Suitable for background image",
+      "source": "Revo Sunglasses",
+      "original_width": "1080px",
+      "original_height": "1080px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/6406c922be56.jpg",
+      "caption": "",
+      "source": "Revo Sunglasses",
+      "original_width": "1080px",
+      "original_height": "1080px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/a30cff76a193.jpg",
+      "caption": "",
+      "source": "Dreamstime",
+      "original_width": "1600px",
+      "original_height": "1157px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/44c2200d79de.jpg",
+      "caption": "",
+      "source": "The Dispatch",
+      "original_width": "1400px",
+      "original_height": "884px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/bf9374cc6d00.webp",
+      "caption": "",
+      "source": "lucyd eyewear",
+      "original_width": "2048px",
+      "original_height": "2048px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/606a78c3a6cd.jpg",
+      "caption": "",
+      "source": "The Dispatch",
+      "original_width": "1400px",
+      "original_height": "1127px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/db910e55b167.jpg",
+      "caption": "",
+      "source": "Cambridge University Press & Assessment",
+      "original_width": "1514px",
+      "original_height": "1948px"
+    }
+  ]
+}

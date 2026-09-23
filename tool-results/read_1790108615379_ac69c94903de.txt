@@ -1,0 +1,862 @@
+     1→"use client";
+     2→
+     3→// =============================================================================
+     4→// IatApp — participant flow state machine:
+     5→//   compat-check → intro → consent → demographics → create session → preload
+     6→//   → fullscreen → [block instructions → trials] ×7 → upload → result
+     7→//
+     8→// Offline-resilience: trial records are buffered to localStorage after each
+     9→// block; upload failure keeps them (PENDING_SYNC) with a retry path. No
+    10→// network activity occurs between preload and completion.
+    11→// =============================================================================
+    12→
+    13→import { useCallback, useEffect, useRef, useState } from "react";
+    14→import { Button } from "@/components/ui/button";
+    15→import { Card, CardContent } from "@/components/ui/card";
+    16→import { Checkbox } from "@/components/ui/checkbox";
+    17→import { Input } from "@/components/ui/input";
+    18→import { Label } from "@/components/ui/label";
+    19→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+    20→import { Progress } from "@/components/ui/progress";
+    21→import { TrialRunner } from "@/components/iat/TrialRunner";
+    22→import { toFa } from "@/lib/format";
+    23→import type { BlockPlanEntry, ClientQualityMetadata, ClientTrialResult, SessionPlan, TrialSpec } from "@/lib/iat/types";
+    24→
+    25→// ---------------------------------------------------------------------------
+    26→// Types
+    27→// ---------------------------------------------------------------------------
+    28→
+    29→type Phase =
+    30→  | "loading-env"
+    31→  | "incompatible"
+    32→  | "pending-sync"
+    33→  | "intro"
+    34→  | "consent"
+    35→  | "demographics"
+    36→  | "creating"
+    37→  | "preload"
+    38→  | "ready-to-start"
+    39→  | "block-intro"
+    40→  | "running"
+    41→  | "uploading"
+    42→  | "result"
+    43→  | "sync-error"
+    44→  | "error";
+    45→
+    46→interface SessionInfo {
+    47→  sessionId: string;
+    48→  anonymousId: string;
+    49→  conditionOrder: "A" | "B";
+    50→  testVersion: { code: string; version: string; scoringVersion: string; blockStructure: string };
+    51→  plan: SessionPlan;
+    52→}
+    53→
+    54→interface CompleteResponse {
+    55→  ok: boolean;
+    56→  sessionStatus: string;
+    57→  result: {
+    58→    valid: boolean;
+    59→    dScore: number | null;
+    60→    rawD: number | null;
+    61→    level: string | null;
+    62→    interpretation: string;
+    63→    reasonFa: string | null;
+    64→    caveat: string;
+    65→    conditionOrder: string;
+    66→    errorRate: number | null;
+    67→    fastResponseRate: number | null;
+    68→  };
+    69→}
+    70→
+    71→const BUFFER_KEY = "iat-pending-session-v1";
+    72→
+    73→// ---------------------------------------------------------------------------
+    74→// Helpers
+    75→// ---------------------------------------------------------------------------
+    76→
+    77→const GENDERS = ["زن", "مرد", "سایر", "ترجیح می‌دهم نگویم"];
+    78→const EDUCATIONS = ["زیر دیپلم", "دیپلم", "کاردانی", "کارشناسی", "کارشناسی ارشد", "دکتری"];
+    79→const PROVINCES = [
+    80→  "آذربایجان شرقی", "آذربایجان غربی", "اردبیل", "اصفهان", "البرز", "ایلام", "بوشهر", "تهران",
+    81→  "چهارمحال و بختیاری", "خراسان جنوبی", "خراسان رضوی", "خراسان شمالی", "خوزستان", "زنجان",
+    82→  "سمنان", "سیستان و بلوچستان", "فارس", "قزوین", "قم", "کردستان", "کرمان", "کرمانشاه",
+    83→  "کهگیلویه و بویراحمد", "گلستان", "گیلان", "لرستان", "مازندران", "مرکزی", "هرمزگان", "همدان", "یزد", "سایر",
+    84→];
+    85→
+    86→interface CompatResult {
+    87→  ok: boolean;
+    88→  reasons: string[];
+    89→  deviceType: string;
+    90→  screenWidth: number;
+    91→  screenHeight: number;
+    92→  fullscreenCapable: boolean;
+    93→}
+    94→
+    95→function checkCompatibility(): CompatResult {
+    96→  const reasons: string[] = [];
+    97→  const w = window.innerWidth;
+    98→  const h = window.innerHeight;
+    99→  if (w < 1024) reasons.push("عرض صفحه کمتر از ۱۰۲۴ پیکسل است (نسخه پژوهشی صرفاً دسکتاپ است).");
+   100→  if (h < 600) reasons.push("ارتفاع صفحه کمتر از ۶۰۰ پیکسل است.");
+   101→  const coarseOnly = window.matchMedia("(pointer: coarse)").matches && !window.matchMedia("(pointer: fine)").matches;
+   102→  if (coarseOnly) reasons.push("دسترسی صفحه‌لمسی تشخیص داده شد؛ آزمون نیازمند صفحه‌کلید فیزیکی است.");
+   103→  if (typeof performance?.now !== "function") reasons.push("مرورگر از اندازه‌گیری دقیق زمان پشتیبانی نمی‌کند.");
+   104→  if (typeof window.requestAnimationFrame !== "function") reasons.push("مرورگر قدیمی است.");
+   105→  const ua = navigator.userAgent;
+   106→  const deviceType = /iPad|Tablet/.test(ua) ? "tablet" : /Mobi|Android.*Mobile|iPhone/.test(ua) ? "mobile" : "desktop";
+   107→
+   108→  return {
+   109→    ok: reasons.length === 0,
+   110→    reasons,
+   111→    deviceType,
+   112→    screenWidth: w,
+   113→    screenHeight: h,
+   114→    fullscreenCapable: typeof document.fullscreenEnabled === "undefined" ? false : document.fullscreenEnabled,
+   115→  };
+   116→}
+   117→
+   118→// ---------------------------------------------------------------------------
+   119→// Component
+   120→// ---------------------------------------------------------------------------
+   121→
+   122→export function IatApp() {
+   123→  const [phase, setPhase] = useState<Phase>("loading-env");
+   124→  const [compat, setCompat] = useState<CompatResult | null>(null);
+   125→  const [compatError, setCompatError] = useState<string | null>(null);
+   126→  const [session, setSession] = useState<SessionInfo | null>(null);
+   127→  const [blockIdx, setBlockIdx] = useState(0);
+   128→  const [preloadProgress, setPreloadProgress] = useState(0);
+   129→  const [preloadFailed, setPreloadFailed] = useState(false);
+   130→  const [creating, setCreating] = useState(false);
+   131→  const [uploading, setUploading] = useState(false);
+   132→  const [result, setResult] = useState<CompleteResponse["result"] | null>(null);
+   133→  const [demographics, setDemographics] = useState({ age: "", gender: "", education: "", province: "" });
+   134→  const [consented, setConsented] = useState(false);
+   135→  const [demoError, setDemoError] = useState<string | null>(null);
+   136→
+   137→  // Quality tracking (refs — zero re-render impact)
+   138→  const fullscreenExitRef = useRef(0);
+   139→  const fullscreenDeniedRef = useRef(false);
+   140→  const visibilityCountRef = useRef(0);
+   141→  const awayMsRef = useRef(0);
+   142→  const hiddenAtRef = useRef<number | null>(null);
+   143→  const finishedRef = useRef(false);
+   144→  const sessionRef = useRef<SessionInfo | null>(null);
+   145→  sessionRef.current = session;
+   146→  const trialsRef = useRef<ClientTrialResult[]>([]);
+   147→  const phaseRef = useRef<Phase>("loading-env");
+   148→  phaseRef.current = phase;
+   149→
+   150→  // --- Compatibility check (once) ------------------------------------------
+   151→  useEffect(() => {
+   152→    const c = checkCompatibility();
+   153→    setCompat(c);
+   154→    if (!c.ok) {
+   155→      setPhase("incompatible");
+   156→      return;
+   157→    }
+   158→    // Pending-sync recovery: an upload failed previously?
+   159→    try {
+   160→      const raw = localStorage.getItem(BUFFER_KEY);
+   161→      if (raw) {
+   162→        const buf = JSON.parse(raw) as { sessionId: string; trials: ClientTrialResult[]; quality: ClientQualityMetadata };
+   163→        if (buf?.sessionId && Array.isArray(buf.trials) && buf.trials.length > 0) {
+   164→          setPhase("pending-sync");
+   165→          return;
+   166→        }
+   167→      }
+   168→    } catch {
+   169→      localStorage.removeItem(BUFFER_KEY);
+   170→    }
+   171→    setPhase("intro");
+   172→  }, []);
+   173→
+   174→  // --- Global quality event tracking ----------------------------------------
+   175→  useEffect(() => {
+   176→    const onFsChange = () => {
+   177→      if (!document.fullscreenElement) {
+   178→        fullscreenExitRef.current += 1;
+   179→      }
+   180→    };
+   181→    const onVis = () => {
+   182→      if (document.hidden) {
+   183→        hiddenAtRef.current = Date.now();
+   184→        visibilityCountRef.current += 1;
+   185→      } else if (hiddenAtRef.current !== null) {
+   186→        awayMsRef.current += Date.now() - hiddenAtRef.current;
+   187→        hiddenAtRef.current = null;
+   188→      }
+   189→    };
+   190→    const onHide = () => {
+   191→      // Best-effort abandon marker while a test is in progress
+   192→      const s = sessionRef.current;
+   193→      const p = phaseRef.current;
+   194→      if (s && !finishedRef.current && (p === "running" || p === "block-intro")) {
+   195→        try {
+   196→          navigator.sendBeacon(`/api/session/${s.sessionId}/abandon`);
+   197→        } catch {
+   198→          /* best effort */
+   199→        }
+   200→      }
+   201→    };
+   202→    document.addEventListener("fullscreenchange", onFsChange);
+   203→    document.addEventListener("visibilitychange", onVis);
+   204→    window.addEventListener("pagehide", onHide);
+   205→    return () => {
+   206→      document.removeEventListener("fullscreenchange", onFsChange);
+   207→      document.removeEventListener("visibilitychange", onVis);
+   208→      window.removeEventListener("pagehide", onHide);
+   209→    };
+   210→  }, []);
+   211→
+   212→  const qualityMeta = useCallback((): ClientQualityMetadata => {
+   213→    return {
+   214→      fullscreenExitCount: fullscreenExitRef.current,
+   215→      fullscreenDenied: fullscreenDeniedRef.current,
+   216→      visibilityChangeCount: visibilityCountRef.current,
+   217→      awayDurationMs: awayMsRef.current,
+   218→      screenWidth: compat?.screenWidth ?? 0,
+   219→      screenHeight: compat?.screenHeight ?? 0,
+   220→      deviceType: compat?.deviceType ?? "desktop",
+   221→      language: navigator.language ?? "fa",
+   222→    };
+   223→  }, [compat]);
+   224→
+   225→  // --- Flow actions ----------------------------------------------------------
+   226→
+   227→  const startCreation = useCallback(async () => {
+   228→    setCreating(true);
+   229→    setDemoError(null);
+   230→    try {
+   231→      const res = await fetch("/api/session", {
+   232→        method: "POST",
+   233→        headers: { "Content-Type": "application/json" },
+   234→        body: JSON.stringify({
+   235→          consent: true,
+   236→          age: parseInt(demographics.age, 10),
+   237→          gender: demographics.gender,
+   238→          education: demographics.education,
+   239→          province: demographics.province || null,
+   240→          environment: {
+   241→            screenWidth: compat?.screenWidth ?? 0,
+   242→            screenHeight: compat?.screenHeight ?? 0,
+   243→            deviceType: compat?.deviceType ?? "desktop",
+   244→            language: navigator.language,
+   245→          },
+   246→        }),
+   247→      });
+   248→      if (!res.ok) {
+   249→        const data = await res.json().catch(() => ({}));
+   250→        throw new Error(data.error ?? "خطا در ایجاد جلسه");
+   251→      }
+   252→      const data = (await res.json()) as SessionInfo;
+   253→      setSession(data);
+   254→      setPhase("preload");
+   255→    } catch (e) {
+   256→      setDemoError(e instanceof Error ? e.message : "خطای شبکه");
+   257→      setPhase("error");
+   258→    } finally {
+   259→      setCreating(false);
+   260→    }
+   261→  }, [demographics, compat]);
+   262→
+   263→  // --- Preload ---------------------------------------------------------------
+   264→  const runPreload = useCallback(async () => {
+   265→    const s = sessionRef.current;
+   266→    if (!s) return;
+   267→    setPreloadFailed(false);
+   268→    setPreloadProgress(0);
+   269→    const paths = [...new Set(s.plan.trials.filter((t) => t.stimulusType === "image").map((t) => t.stimulusPath))];
+   270→    let loaded = 0;
+   271→    let failures = 0;
+   272→    await Promise.all(
+   273→      paths.map(
+   274→        (src) =>
+   275→          new Promise<void>((resolve) => {
+   276→            const img = new Image();
+   277→            const done = (ok: boolean) => {
+   278→              if (ok) loaded += 1;
+   279→              else failures += 1;
+   280→              setPreloadProgress(loaded / Math.max(1, paths.length));
+   281→              resolve();
+   282→            };
+   283→            img.onload = () => {
+   284→              // ensure full decode before the first critical trial
+   285→              if (typeof img.decode === "function") {
+   286→                img.decode().then(() => done(true)).catch(() => done(true));
+   287→              } else done(true);
+   288→            };
+   289→            img.onerror = () => done(false);
+   290→            img.src = src;
+   291→          }),
+   292→      ),
+   293→    );
+   294→    if (failures > 0) {
+   295→      console.error(`[IAT] preload failed for ${failures}/${paths.length} images`);
+   296→      setPreloadFailed(true);
+   297→      return;
+   298→    }
+   299→    setPhase("ready-to-start");
+   300→  }, []);
+   301→
+   302→  // Auto-run preload when entering the preload phase (hook order is stable —
+   303→  // this effect lives above all conditional rendering).
+   304→  useEffect(() => {
+   305→    if (phase === "preload" && !preloadFailed && sessionRef.current) {
+   306→      void runPreload();
+   307→    }
+   308→  }, [phase, preloadFailed, runPreload]);
+   309→
+   310→  const beginTest = useCallback(async () => {
+   311→    const s = sessionRef.current;
+   312→    if (!s) return;
+   313→    // Fullscreen request must happen inside the user gesture
+   314→    try {
+   315→      if (document.fullscreenEnabled) {
+   316→        await document.documentElement.requestFullscreen();
+   317→      } else {
+   318→        fullscreenDeniedRef.current = true;
+   319→      }
+   320→    } catch {
+   321→      fullscreenDeniedRef.current = true;
+   322→    }
+   323→    // mark RUNNING (no further requests until completion)
+   324→    void fetch(`/api/session/${s.sessionId}/start`, { method: "POST" }).catch(() => undefined);
+   325→    setBlockIdx(0);
+   326→    setPhase("block-intro");
+   327→  }, []);
+   328→
+   329→  // --- Upload ------------------------------------------------------------------
+   330→  const uploadResults = useCallback(async () => {
+   331→    const s = sessionRef.current;
+   332→    if (!s) return;
+   333→    setUploading(true);
+   334→    setPhase("uploading");
+   335→    const payload = {
+   336→      trials: trialsRef.current,
+   337→      quality: qualityMeta(),
+   338→    };
+   339→    try {
+   340→      const res = await fetch(`/api/session/${s.sessionId}/complete`, {
+   341→        method: "POST",
+   342→        headers: { "Content-Type": "application/json" },
+   343→        body: JSON.stringify(payload),
+   344→      });
+   345→      if (!res.ok) {
+   346→        const data = await res.json().catch(() => ({}));
+   347→        if (res.status === 422) {
+   348→          // server rejected data — keep buffer for researcher review
+   349→          setPhase("sync-error");
+   350→          return;
+   351→        }
+   352→        throw new Error(data.error ?? "upload failed");
+   353→      }
+   354→      const data = (await res.json()) as CompleteResponse;
+   355→      finishedRef.current = true;
+   356→      localStorage.removeItem(BUFFER_KEY);
+   357→      if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
+   358→      setResult(data.result);
+   359→      setPhase("result");
+   360→    } catch {
+   361→      // network failure → PENDING_SYNC (buffer already saved)
+   362→      setPhase("sync-error");
+   363→    } finally {
+   364→      setUploading(false);
+   365→    }
+   366→  }, [qualityMeta]);
+   367→
+   368→  // --- Block completion -------------------------------------------------------
+   369→  const onBlockDone = useCallback(
+   370→    (records: ClientTrialResult[]) => {
+   371→      const s = sessionRef.current;
+   372→      if (!s) return;
+   373→      trialsRef.current = trialsRef.current.concat(records);
+   374→      // buffer to localStorage (offline resilience)
+   375→      try {
+   376→        localStorage.setItem(
+   377→          BUFFER_KEY,
+   378→          JSON.stringify({ sessionId: s.sessionId, trials: trialsRef.current, quality: qualityMeta() }),
+   379→        );
+   380→      } catch {
+   381→        /* storage full — upload still attempted */
+   382→      }
+   383→      if (blockIdx + 1 < s.plan.blocks.length) {
+   384→        setBlockIdx(blockIdx + 1);
+   385→        setPhase("block-intro");
+   386→      } else {
+   387→        void uploadResults();
+   388→      }
+   389→    },
+   390→    [blockIdx, qualityMeta, uploadResults],
+   391→  );
+   392→
+   393→  const retryUpload = useCallback(async () => {
+   394→    // used both from sync-error and pending-sync recovery on reload
+   395→    try {
+   396→      const raw = localStorage.getItem(BUFFER_KEY);
+   397→      if (!raw) {
+   398→        setPhase("intro");
+   399→        return;
+   400→      }
+   401→      const buf = JSON.parse(raw) as { sessionId: string; trials: ClientTrialResult[]; quality: ClientQualityMetadata };
+   402→      setUploading(true);
+   403→      const res = await fetch(`/api/session/${buf.sessionId}/complete`, {
+   404→        method: "POST",
+   405→        headers: { "Content-Type": "application/json" },
+   406→        body: JSON.stringify({ trials: buf.trials, quality: buf.quality }),
+   407→      });
+   408→      const data = await res.json().catch(() => ({}));
+   409→      if (res.ok) {
+   410→        finishedRef.current = true;
+   411→        localStorage.removeItem(BUFFER_KEY);
+   412→        setResult((data as CompleteResponse).result);
+   413→        setPhase("result");
+   414→        return;
+   415→      }
+   416→      if (res.status === 422 || res.status === 404) {
+   417→        localStorage.removeItem(BUFFER_KEY);
+   418→        setPhase("intro");
+   419→        return;
+   420→      }
+   421→      setPhase("pending-sync");
+   422→    } catch {
+   423→      setPhase("pending-sync");
+   424→    } finally {
+   425→      setUploading(false);
+   426→    }
+   427→  }, []);
+   428→
+   429→  const discardBuffer = useCallback(() => {
+   430→    localStorage.removeItem(BUFFER_KEY);
+   431→    trialsRef.current = [];
+   432→    setPhase("intro");
+   433→  }, []);
+   434→
+   435→  const submitDemographics = useCallback(() => {
+   436→    const age = parseInt(demographics.age, 10);
+   437→    if (!Number.isFinite(age) || age < 8 || age > 100) {
+   438→      setDemoError("سن معتبر وارد کنید (۸ تا ۱۰۰).");
+   439→      return;
+   440→    }
+   441→    if (!demographics.gender) {
+   442→      setDemoError("جنسیت را انتخاب کنید.");
+   443→      return;
+   444→    }
+   445→    if (!demographics.education) {
+   446→      setDemoError("تحصیلات را انتخاب کنید.");
+   447→      return;
+   448→    }
+   449→    setDemoError(null);
+   450→    void startCreation();
+   451→  }, [demographics, startCreation]);
+   452→
+   453→  // --- Render ------------------------------------------------------------------
+   454→
+   455→  if (phase === "loading-env") {
+   456→    return <Centered>در حال بررسی محیط…</Centered>;
+   457→  }
+   458→
+   459→  if (phase === "incompatible" && compat) {
+   460→    return (
+   461→      <Centered>
+   462→        <Card className="max-w-lg w-full text-right">
+   463→          <CardContent className="p-6 space-y-3">
+   464→            <h2 className="text-xl font-bold">این دستگاه برای اجرای آزمون مناسب نیست</h2>
+   465→            <ul className="list-disc pr-5 space-y-1 text-sm text-muted-foreground">
+   466→              {compat.reasons.map((r, i) => (
+   467→                <li key={i}>{r}</li>
+   468→              ))}
+   469→            </ul>
+   470→            <p className="text-sm text-muted-foreground">
+   471→              لطفاً با یک رایانه رومیزی/لپ‌تاپ با صفحه‌کلید فیزیکی و مرورگر به‌روز وارد شوید.
+   472→            </p>
+   473→          </CardContent>
+   474→        </Card>
+   475→      </Centered>
+   476→    );
+   477→  }
+   478→
+   479→  if (phase === "pending-sync") {
+   480→    return (
+   481→      <Centered>
+   482→        <Card className="max-w-lg w-full text-right">
+   483→          <CardContent className="p-6 space-y-4">
+   484→            <h2 className="text-xl font-bold">ارسال داده‌های آزمون ناتمام مانده است</h2>
+   485→            <p className="text-sm text-muted-foreground">
+   486→              داده‌های یک جلسه قبلی در این مرورگر ذخیره شده اما ارسال نشده است. می‌توانید دوباره تلاش کنید یا آن را حذف کنید.
+   487→            </p>
+   488→            <div className="flex gap-2">
+   489→              <Button onClick={() => void retryUpload()} disabled={uploading}>
+   490→                {uploading ? "در حال ارسال…" : "تلاش برای ارسال"}
+   491→              </Button>
+   492→              <Button variant="outline" onClick={discardBuffer}>
+   493→                حذف و شروع از نو
+   494→              </Button>
+   495→            </div>
+   496→          </CardContent>
+   497→        </Card>
+   498→      </Centered>
+   499→    );
+   500→  }
+   501→
+   502→  if (phase === "intro") {
+   503→    return (
+   504→      <Centered>
+   505→        <Card className="max-w-2xl w-full text-right">
+   506→          <CardContent className="p-8 space-y-4">
+   507→            <h2 className="text-2xl font-bold">آزمون تداعی ضمنی (IAT)</h2>
+   508→            <div className="space-y-3 text-sm leading-7 text-muted-foreground">
+   509→              <p>
+   510→                در این آزمون تصویرها و واژه‌هایی نمایش داده می‌شود و شما با دو کلید صفحه‌کلید (E و I) آن‌ها را
+   511→                طبقه‌بندی می‌کنید. آزمون شامل <b className="text-foreground">۷ بخش</b> و حدود ۲۰۰ مرحله است و
+   512→                حدود ۱۰ تا ۱۲ دقیقه زمان می‌برد.
+   513→              </p>
+   514→              <p>
+   515→                در طول آزمون لطفاً تمرکز خود را حفظ کنید، فقط از دو کلید E و I استفاده کنید و در صورت اشتباه،
+   516→                کلید درست را بفشارید تا مرحله ادامه یابد.
+   517→              </p>
+   518→              <p className="text-foreground font-medium">
+   519→                این آزمون فقط روی رایانه (دسکتاپ/لپ‌تاپ) اجرا می‌شود و ورود به حالت تمام‌صفحه پیشنهاد می‌شود.
+   520→              </p>
+   521→            </div>
+   522→            <Button size="lg" onClick={() => setPhase("consent")}>
+   523→              ادامه
+   524→            </Button>
+   525→          </CardContent>
+   526→        </Card>
+   527→      </Centered>
+   528→    );
+   529→  }
+   530→
+   531→  if (phase === "consent") {
+   532→    return (
+   533→      <Centered>
+   534→        <Card className="max-w-2xl w-full text-right">
+   535→          <CardContent className="p-8 space-y-4">
+   536→            <h2 className="text-2xl font-bold">رضایت آگاهانه</h2>
+   537→            <div className="text-sm leading-7 text-muted-foreground space-y-2">
+   538→              <p>
+   539→                مشارکت شما کاملاً داوطلبانه است و می‌توانید در هر مرحله از ادامه مشارکت صرف‌نظر کنید. داده‌ها
+   540→                به‌صورت ناشناس ذخیره می‌شوند؛ هیچ اطلاعات هویتی (نام، شماره تماس یا نشانی) جمع‌آوری نمی‌شود.
+   541→              </p>
+   542→              <p>
+   543→                داده‌های پاسخ (زمان واکنش و دقت) صرفاً برای اهداف پژوهشی دانشگاهی استفاده خواهد شد و نتایج به‌صورت
+   544→                تجمیعی گزارش می‌شود.
+   545→              </p>
+   546→            </div>
+   547→            <label className="flex items-center gap-2 cursor-pointer">
+   548→              <Checkbox checked={consented} onCheckedChange={(v) => setConsented(v === true)} id="consent" />
+   549→              <span className="text-sm font-medium">
+   550→                شرایط بالا را خواندم و با مشارکت داوطلبانه در این پژوهش موافقم.
+   551→              </span>
+   552→            </label>
+   553→            <div className="flex gap-2">
+   554→              <Button disabled={!consented} onClick={() => setPhase("demographics")}>
+   555→                ثبت رضایت و ادامه
+   556→              </Button>
+   557→              <Button variant="outline" onClick={() => setPhase("intro")}>
+   558→                بازگشت
+   559→              </Button>
+   560→            </div>
+   561→          </CardContent>
+   562→        </Card>
+   563→      </Centered>
+   564→    );
+   565→  }
+   566→
+   567→  if (phase === "demographics") {
+   568→    return (
+   569→      <Centered>
+   570→        <Card className="max-w-xl w-full text-right">
+   571→          <CardContent className="p-8 space-y-4">
+   572→            <h2 className="text-2xl font-bold">اطلاعات جمعیت‌شناختی</h2>
+   573→            <p className="text-xs text-muted-foreground">این اطلاعات ناشناس و فقط برای تحلیل پژوهشی است.</p>
+   574→            <div className="grid gap-4">
+   575→              <div className="space-y-1.5">
+   576→                <Label htmlFor="age">سن</Label>
+   577→                <Input
+   578→                  id="age"
+   579→                  type="number"
+   580→                  min={8}
+   581→                  max={100}
+   582→                  inputMode="numeric"
+   583→                  value={demographics.age}
+   584→                  onChange={(e) => setDemographics((d) => ({ ...d, age: e.target.value }))}
+   585→                  placeholder="مثلاً ۲۵"
+   586→                  dir="ltr"
+   587→                />
+   588→              </div>
+   589→              <div className="space-y-1.5">
+   590→                <Label>جنسیت</Label>
+   591→                <Select value={demographics.gender} onValueChange={(v) => setDemographics((d) => ({ ...d, gender: v }))}>
+   592→                  <SelectTrigger dir="rtl">
+   593→                    <SelectValue placeholder="انتخاب کنید" />
+   594→                  </SelectTrigger>
+   595→                  <SelectContent>
+   596→                    {GENDERS.map((g) => (
+   597→                      <SelectItem key={g} value={g}>
+   598→                        {g}
+   599→                      </SelectItem>
+   600→                    ))}
+   601→                  </SelectContent>
+   602→                </Select>
+   603→              </div>
+   604→              <div className="space-y-1.5">
+   605→                <Label>تحصیلات</Label>
+   606→                <Select
+   607→                  value={demographics.education}
+   608→                  onValueChange={(v) => setDemographics((d) => ({ ...d, education: v }))}
+   609→                >
+   610→                  <SelectTrigger dir="rtl">
+   611→                    <SelectValue placeholder="انتخاب کنید" />
+   612→                  </SelectTrigger>
+   613→                  <SelectContent>
+   614→                    {EDUCATIONS.map((g) => (
+   615→                      <SelectItem key={g} value={g}>
+   616→                        {g}
+   617→                      </SelectItem>
+   618→                    ))}
+   619→                  </SelectContent>
+   620→                </Select>
+   621→              </div>
+   622→              <div className="space-y-1.5">
+   623→                <Label>استان (اختیاری)</Label>
+   624→                <Select
+   625→                  value={demographics.province}
+   626→                  onValueChange={(v) => setDemographics((d) => ({ ...d, province: v }))}
+   627→                >
+   628→                  <SelectTrigger dir="rtl">
+   629→                    <SelectValue placeholder="انتخاب کنید (اختیاری)" />
+   630→                  </SelectTrigger>
+   631→                  <SelectContent className="max-h-72 overflow-y-auto scrollbar-thin">
+   632→                    {PROVINCES.map((g) => (
+   633→                      <SelectItem key={g} value={g}>
+   634→                        {g}
+   635→                      </SelectItem>
+   636→                    ))}
+   637→                  </SelectContent>
+   638→                </Select>
+   639→              </div>
+   640→            </div>
+   641→            {demoError && <p className="text-sm text-destructive">{demoError}</p>}
+   642→            <Button onClick={submitDemographics} disabled={creating}>
+   643→              {creating ? "در حال ایجاد جلسه…" : "ادامه به آزمون"}
+   644→            </Button>
+   645→          </CardContent>
+   646→        </Card>
+   647→      </Centered>
+   648→    );
+   649→  }
+   650→
+   651→  if (phase === "preload") {
+   652→    return (
+   653→      <Centered>
+   654→        <Card className="max-w-lg w-full text-right">
+   655→          <CardContent className="p-8 space-y-4">
+   656→            <h2 className="text-xl font-bold">
+   657→              {preloadFailed ? "خطا در بارگذاری محرک‌ها" : "در حال بارگذاری محرک‌های آزمون…"}
+   658→            </h2>
+   659→            {!preloadFailed && (
+   660→              <>
+   661→                <Progress value={preloadProgress * 100} />
+   662→                <p className="text-sm text-muted-foreground">
+   663→                  همه تصویرها پیش از شروع بارگذاری می‌شوند تا زمان‌سنجی آزمون دقیق باشد. لطفاً صبر کنید.
+   664→                </p>
+   665→              </>
+   666→            )}
+   667→            {preloadFailed && (
+   668→              <p className="text-sm text-destructive">
+   669→                بارگذاری برخی تصویرها ناموفق بود. آزمون بدون پیش‌بارگذاری کامل آغاز نمی‌شود. اتصال را بررسی و
+   670→                دوباره تلاش کنید.
+   671→              </p>
+   672→            )}
+   673→            <Button onClick={() => void runPreload()}>{preloadFailed ? "تلاش دوباره" : "بارگذاری مجدد"}</Button>
+   674→          </CardContent>
+   675→        </Card>
+   676→      </Centered>
+   677→    );
+   678→  }
+   679→
+   680→  if (phase === "ready-to-start" && session) {
+   681→    return (
+   682→      <Centered>
+   683→        <Card className="max-w-lg w-full text-right">
+   684→          <CardContent className="p-8 space-y-4">
+   685→            <h2 className="text-xl font-bold">همه‌چیز آماده است</h2>
+   686→            <ul className="text-sm leading-7 text-muted-foreground list-disc pr-5">
+   687→              <li>دست‌ها را روی دو کلید E و I قرار دهید.</li>
+   688→              <li>پس از شروع، حالت تمام‌صفحه فعال می‌شود.</li>
+   689→              <li>در صورت اشتباه، نشان ✕ ظاهر می‌شود؛ کلید درست را بفشارید.</li>
+   690→              <li>کد ناشناس شما: <span className="font-mono text-foreground">{session.anonymousId}</span></li>
+   691→            </ul>
+   692→            <Button size="lg" onClick={() => void beginTest()}>
+   693→              شروع آزمون
+   694→            </Button>
+   695→          </CardContent>
+   696→        </Card>
+   697→      </Centered>
+   698→    );
+   699→  }
+   700→
+   701→  if (phase === "block-intro" && session) {
+   702→    const block = session.plan.blocks[blockIdx];
+   703→    return (
+   704→      <BlockIntro
+   705→        block={block}
+   706→        index={blockIdx}
+   707→        total={session.plan.blocks.length}
+   708→        onStart={() => setPhase("running")}
+   709→      />
+   710→    );
+   711→  }
+   712→
+   713→  if (phase === "running" && session) {
+   714→    const block = session.plan.blocks[blockIdx];
+   715→    const trials = session.plan.trials.filter((t) => t.blockNumber === block.number);
+   716→    return <TrialRunner block={block} trials={trials} onBlockDone={onBlockDone} />;
+   717→  }
+   718→
+   719→  if (phase === "uploading" || (phase === "sync-error" && uploading)) {
+   720→    return <Centered>در حال ثبت داده‌ها… لطفاً صفحه را نبندید.</Centered>;
+   721→  }
+   722→
+   723→  if (phase === "sync-error") {
+   724→    return (
+   725→      <Centered>
+   726→        <Card className="max-w-lg w-full text-right">
+   727→          <CardContent className="p-8 space-y-4">
+   728→            <h2 className="text-xl font-bold">ارسال داده‌ها ناموفق بود</h2>
+   729→            <p className="text-sm text-muted-foreground">
+   730→              داده‌های شما در همین مرورگر ذخیره شده است و چیزی از دست نرفته است. اتصال اینترنت را بررسی کنید و
+   731→              دوباره تلاش کنید.
+   732→            </p>
+   733→            <div className="flex gap-2">
+   734→              <Button onClick={() => void uploadResults()}>تلاش دوباره</Button>
+   735→              <Button variant="outline" onClick={() => setPhase("pending-sync")}>
+   736→                بعداً
+   737→              </Button>
+   738→            </div>
+   739→          </CardContent>
+   740→        </Card>
+   741→      </Centered>
+   742→    );
+   743→  }
+   744→
+   745→  if (phase === "error") {
+   746→    return (
+   747→      <Centered>
+   748→        <Card className="max-w-lg w-full text-right">
+   749→          <CardContent className="p-8 space-y-3">
+   750→            <h2 className="text-xl font-bold text-destructive">خطا</h2>
+   751→            <p className="text-sm text-muted-foreground">{compatError ?? demoError ?? "خطای نامشخص"}</p>
+   752→            <Button variant="outline" onClick={() => setPhase("intro")}>
+   753→              بازگشت به ابتدا
+   754→            </Button>
+   755→          </CardContent>
+   756→        </Card>
+   757→      </Centered>
+   758→    );
+   759→  }
+   760→
+   761→  if (phase === "result" && result) {
+   762→    return (
+   763→      <Centered>
+   764→        <Card className="max-w-2xl w-full text-right">
+   765→          <CardContent className="p-8 space-y-5">
+   766→            <h2 className="text-2xl font-bold">آزمون کامل شد</h2>
+   767→            <p className="text-sm text-muted-foreground">
+   768→              پاسخ‌های شما ثبت شد. از مشارکت شما سپاسگزاریم.
+   769→            </p>
+   770→            {result.valid ? (
+   771→              <div className="space-y-4">
+   772→                <div className="flex items-baseline gap-3">
+   773→                  <span className="text-sm text-muted-foreground">شاخص D (نسخه بهبودیافته Greenwald و همکاران، ۲۰۰۳):</span>
+   774→                  <span className="text-3xl font-bold font-mono" dir="ltr">
+   775→                    {result.dScore === null ? "—" : result.dScore.toFixed(3)}
+   776→                  </span>
+   777→                </div>
+   778→                <p className="text-sm leading-7">{result.interpretation}</p>
+   779→              </div>
+   780→            ) : (
+   781→              <div className="space-y-2">
+   782→                <p className="text-sm leading-7 text-amber-700">{result.interpretation}</p>
+   783→                {result.reasonFa && <p className="text-xs text-muted-foreground">دلیل: {result.reasonFa}</p>}
+   784→              </div>
+   785→            )}
+   786→            <p className="text-xs leading-6 text-muted-foreground border-t pt-4">{result.caveat}</p>
+   787→          </CardContent>
+   788→        </Card>
+   789→      </Centered>
+   790→    );
+   791→  }
+   792→
+   793→  return <Centered>…</Centered>;
+   794→}
+   795→
+   796→// ---------------------------------------------------------------------------
+   797→// Sub-components
+   798→// ---------------------------------------------------------------------------
+   799→
+   800→function Centered({ children }: { children: React.ReactNode }) {
+   801→  return (
+   802→    <div className="flex-1 flex items-center justify-center p-4 md:p-8">
+   803→      {children}
+   804→    </div>
+   805→  );
+   806→}
+   807→
+   808→function BlockIntro({
+   809→  block,
+   810→  index,
+   811→  total,
+   812→  onStart,
+   813→}: {
+   814→  block: BlockPlanEntry;
+   815→  index: number;
+   816→  total: number;
+   817→  onStart: () => void;
+   818→}) {
+   819→  useEffect(() => {
+   820→    const handler = (e: KeyboardEvent) => {
+   821→      if (e.code === "Space" && !e.repeat) {
+   822→        e.preventDefault();
+   823→        onStart();
+   824→      }
+   825→    };
+   826→    window.addEventListener("keydown", handler);
+   827→    return () => window.removeEventListener("keydown", handler);
+   828→  }, [onStart]);
+   829→
+   830→  return (
+   831→    <div className="fixed inset-0 z-50 bg-white experiment-mode flex flex-col items-center justify-center p-6" data-testid="block-intro">
+   832→      <div className="max-w-2xl w-full space-y-6">
+   833→        <div className="flex items-center justify-between">
+   834→          <h2 className="text-2xl font-bold">{block.instructionTitle}</h2>
+   835→          <span className="text-sm text-neutral-400">
+   836→            بخش {toFa(index + 1)} از {toFa(total)}
+   837→          </span>
+   838→        </div>
+   839→        <div className="flex justify-between gap-4" aria-hidden>
+   840→          <span className="px-5 py-3 rounded-lg border-2 border-neutral-800 font-semibold text-lg">
+   841→            {block.leftLabel}
+   842→          </span>
+   843→          <span className="px-5 py-3 rounded-lg border-2 border-neutral-800 font-semibold text-lg">
+   844→            {block.rightLabel}
+   845→          </span>
+   846→        </div>
+   847→        <p className="text-base leading-8 text-neutral-700 whitespace-pre-line text-center">
+   848→          {block.instructionBody}
+   849→        </p>
+   850→        <div className="text-center space-y-3">
+   851→          <p className="text-sm text-neutral-500">
+   852→            برای شروع کلید <kbd className="px-2 py-1 rounded border border-neutral-300 bg-neutral-50 font-semibold">SPACE</kbd> را فشار دهید
+   853→          </p>
+   854→          <Button size="lg" onClick={onStart}>
+   855→            شروع بخش {toFa(index + 1)}
+   856→          </Button>
+   857→        </div>
+   858→      </div>
+   859→    </div>
+   860→  );
+   861→}
+   862→
