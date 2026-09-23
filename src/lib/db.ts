@@ -1,5 +1,4 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaNeonHTTP } from '@prisma/adapter-neon'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
@@ -12,12 +11,15 @@ function createPrismaClient(): PrismaClient {
       'DATABASE_URL is not set. Provide the Postgres (Neon) connection string.',
     )
   }
-  // Neon serverless HTTP adapter: queries travel over HTTPS (port 443) instead of
-  // a raw TCP 5432 connection. Works identically on local dev, the sandbox
-  // preview, and Vercel serverless functions.
-  const adapter = new PrismaNeonHTTP(connectionString)
+  // Standard Prisma query engine over TCP.
+  //   Runtime:  DATABASE_URL — Neon POOLED endpoint + pgbouncer=true
+  //             (transaction-mode pooling is serverless-safe and keeps
+  //             connection counts low; pgbouncer=true disables prepared
+  //             statements required by PgBouncer).
+  //   Migrations: DIRECT_URL — direct non-pooled endpoint, used by
+  //             `prisma db push` / `prisma migrate` (see prisma/schema.prisma).
   return new PrismaClient({
-    adapter,
+    datasources: { db: { url: connectionString } },
     log: process.env.NODE_ENV === 'production' ? ['error'] : ['error', 'warn'],
   })
 }
