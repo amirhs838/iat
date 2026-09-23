@@ -7,11 +7,9 @@
 //      dev default "iat-admin-2024" — CHANGE IT, see README).
 // =============================================================================
 
-import { PrismaClient } from "@prisma/client";
+import { db } from "../src/lib/db";
 import { hashPassword } from "../src/lib/auth/password";
 import { IAT_TEST_DEFINITION, STIMULUS_SPEC, describeBlockOrder } from "../src/config/iat/test-definition";
-
-const db = new PrismaClient();
 
 async function seedAdmin() {
   const username = process.env.ADMIN_USERNAME ?? "admin";

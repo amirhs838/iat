@@ -16,12 +16,16 @@
 // =============================================================================
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Used by schema engines (prisma db push / migrate) — direct, non-pooled connection.
+  // Runtime queries use DATABASE_URL through the Neon serverless adapter (see src/lib/db.ts).
+  directUrl = env("DIRECT_URL")
 }
 
 // -----------------------------------------------------------------------------

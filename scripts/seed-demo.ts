@@ -6,14 +6,13 @@
 // Run: bun run db:seed-demo
 // =============================================================================
 
-import { PrismaClient } from "@prisma/client";
+import { db } from "../src/lib/db";
 import { buildSessionPlan } from "../src/lib/iat/sequence";
 import { generateAnonymousId } from "../src/lib/iat/random";
 import { computeSessionScores, validateSubmittedTrials } from "../src/lib/iat/scoring/index";
 import { IAT_TEST_DEFINITION } from "../src/config/iat/test-definition";
 import type { ClientTrialResult, ScoringTrial } from "../src/lib/iat/types";
 
-const db = new PrismaClient();
 
 function rngFactory(seed: string) {
   // mulberry32
