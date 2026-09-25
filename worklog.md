@@ -278,3 +278,17 @@ Stage Summary:
 - New demographics (6 fields) + speed-first instructions + researcher first-page statement + 18px B Nazanin are live locally and in the shared Neon DB (v1.6.0 active).
 - NOTE for researcher: income options have no bracket between ۷۰ and ۱۰۰ میلیون تومان (implemented exactly as specified — say the word to add ۷۰ تا ۱۰۰).
 - NOTE: production iat-seven.vercel.app gets the code on next push; DB side (schema + v1.6.0) already applied.
+
+---
+Task ID: demographics-deploy-1
+Agent: Z.ai Code (main)
+Task: Push to GitHub + verify Vercel production deployment
+
+Work Log:
+- Pushed main 3158150..b3a98ad to github.com/amirhs838/iat via one-time token-embedded URL (delivers v1.5.0 real-photo commit + v1.6.0 demographics/instructions/font commit).
+- Vercel auto-deploy completed; production verified via agent-browser: intro shows researcher statement + speed instruction; consent → demographics shows exactly 6 fields (سن/جنسیت/تحصیلات/درآمد/مذهبی/شغل); /api health {ok:true}. No session created on prod during the check.
+- DB side already shared (local dev + prod = same Neon iat database), so schema + v1.6.0 were live before the push; build-time prisma db push is a no-op.
+
+Stage Summary:
+- PRODUCTION https://iat-seven.vercel.app fully serves: 18px B Nazanin, 6-field demographics, speed-first instructions, researcher first-page statement, v1.6.0.
+- User should revoke the GitHub PAT shared in chat (again advised).
