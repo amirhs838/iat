@@ -1,9 +1,17 @@
 import type { TestDefinition } from "@/lib/iat/types";
 
 // =============================================================================
-// IAT TEST DEFINITION — VERSION 1.6.0 (single source of truth)
+// IAT TEST DEFINITION — VERSION 1.7.0 (single source of truth)
 // =============================================================================
 // CHANGELOG:
+//   v1.7.0 — Desktop presentation: on mouse/trackpad devices the response
+//            buttons display the physical KEY letters (E / I) instead of the
+//            category names (classic desktop IAT layout); key badges are added
+//            next to the pinned top corner category labels and in the block
+//            instruction screens so the letter↔category mapping is explicit.
+//            Touch devices are unchanged (buttons keep full category labels).
+//            Block instruction bodies re-worded to be device-neutral. Engine,
+//            timing, stimuli and scoring unchanged.
 //   v1.6.0 — Block instructions re-worded per researcher request: the
 //            speed emphasis is now explicit ("تا جای ممکن سریع پاسخ دهید؛
 //            دقت لازم نیست.") instead of "هم سرعت و هم دقت مهم است.".
@@ -82,7 +90,7 @@ import type { TestDefinition } from "@/lib/iat/types";
 
 export const IAT_TEST_DEFINITION: TestDefinition = {
   name: "IAT Iranian–Afghan × Positive–Negative",
-  version: "1.6.0",
+  version: "1.7.0",
   code: "iranian-afghan-att",
   scoringVersion: "improved-d-2003/v1",
   language: "fa",

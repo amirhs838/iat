@@ -561,8 +561,9 @@ export function IatApp() {
                 ادامه یابد. به هر محرک فقط یک پاسخ بدهید و دکمه‌ها را پشت‌سرهم چند بار نزنید.
               </p>
               <p className="text-foreground font-medium">
-                این آزمون با گوشی موبایل، تبلت و رایانه سازگار است. روی رایانه می‌توانید به‌جای دکمه‌ها از
-                کلیدهای E و I هم استفاده کنید. ورود به حالت تمام‌صفحه پیشنهاد می‌شود.
+                این آزمون با گوشی موبایل، تبلت و رایانه سازگار است. روی رایانه دکمه‌های پاسخ با حروف کلیدها
+                (E و I) نمایش داده می‌شوند و می‌توانید همان کلیدها را روی صفحه‌کلید فشار دهید؛ روی موبایل و
+                تبلت دکمه‌های بزرگ لمسی نمایش داده می‌شود. ورود به حالت تمام‌صفحه پیشنهاد می‌شود.
               </p>
             </div>
             <Button size="lg" onClick={() => setPhase("consent")}>
@@ -907,6 +908,15 @@ function BlockIntro({
   total: number;
   onStart: () => void;
 }) {
+  // Same desktop detection as TrialRunner (pointer: fine + hover) — on desktop
+  // the key letters are shown next to each group so the E/I mapping is explicit.
+  const [desktopKeys] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(pointer: fine)")?.matches === true &&
+      window.matchMedia?.("(hover: hover)")?.matches === true
+  );
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.code === "Space" && !e.repeat) {
@@ -930,9 +940,25 @@ function BlockIntro({
         <div className="flex justify-between gap-4" dir="ltr" aria-hidden>
           <span className="px-5 py-3 rounded-lg border-2 border-neutral-800 font-semibold text-lg text-center">
             {block.leftLabel}
+            {desktopKeys && (
+              <span
+                className="ms-2 inline-flex items-center justify-center rounded-md border-2 border-neutral-800 bg-white px-2 py-1 align-middle font-mono text-base font-bold leading-none"
+                dir="ltr"
+              >
+                {block.leftKey}
+              </span>
+            )}
           </span>
           <span className="px-5 py-3 rounded-lg border-2 border-neutral-800 font-semibold text-lg text-center">
             {block.rightLabel}
+            {desktopKeys && (
+              <span
+                className="ms-2 inline-flex items-center justify-center rounded-md border-2 border-neutral-800 bg-white px-2 py-1 align-middle font-mono text-base font-bold leading-none"
+                dir="ltr"
+              >
+                {block.rightKey}
+              </span>
+            )}
           </span>
         </div>
         <p className="text-base leading-8 text-neutral-700 whitespace-pre-line text-center">

@@ -8,8 +8,10 @@
 //     the FIRST response (raw, never transformed).
 //   - PRIMARY INPUT: the two large on-screen buttons (pointerdown — identical
 //     handling for touch, mouse and pen; lowest possible latency on mobile).
-//     A physical keyboard (event.code KeyE/KeyI) remains silently supported
-//     for desktop participants, but no keyboard interaction is required.
+//     On desktop (pointer: fine + hover) the buttons display the physical KEY
+//     letters (E / I) and the keyboard (event.code KeyE/KeyI) is the natural
+//     input; clicking the buttons remains fully equivalent.
+//     Touch devices keep the full category labels on the buttons.
 //   - ANTICIPATION LOCKOUT (ANTICIPATION_LOCKOUT_MS): inputs arriving within
 //     the first 200 ms after stimulus onset are IGNORED (not recorded).
 //     Rationale: choice reaction time below ~200 ms is not physically
@@ -52,10 +54,27 @@ const doubleRaf = () =>
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/** Desktop (mouse/trackpad) detection: fine pointer + hover capability.
+ *  Desktop participants answer with the physical keyboard, so the response
+ *  buttons display the KEY letters (E / I) — the classic desktop IAT layout —
+ *  while the category names stay pinned at the top corners with matching key
+ *  badges. Touch devices (phones/tablets) are UNCHANGED: buttons keep the
+ *  full category labels. Lazy initializer is safe: TrialRunner only mounts
+ *  client-side after user interaction (no SSR hydration involved). */
+function useDesktopKeys(): boolean {
+  const [desktop] = useState(() =>
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(pointer: fine)")?.matches === true &&
+    window.matchMedia?.("(hover: hover)")?.matches === true
+  );
+  return desktop;
+}
+
 export function TrialRunner({ block, trials, onBlockDone }: TrialRunnerProps) {
   const [display, setDisplay] = useState<TrialSpec | null>(null);
   const [showX, setShowX] = useState(false);
   const [trialNum, setTrialNum] = useState(0);
+  const desktopKeys = useDesktopKeys();
 
   const recordsRef = useRef<ClientTrialResult[]>([]);
   const resolverRef = useRef<((r: { key: ResponseKey; t: number }) => void) | null>(null);
@@ -210,6 +229,14 @@ export function TrialRunner({ block, trials, onBlockDone }: TrialRunnerProps) {
           data-testid="left-label"
         >
           {block.leftLabel}
+          {desktopKeys && (
+            <span
+              className="mx-1.5 inline-flex items-center justify-center rounded-md border-2 border-current bg-white px-1.5 py-0.5 align-middle font-mono text-base font-bold leading-none"
+              dir="ltr"
+            >
+              {block.leftKey}
+            </span>
+          )}
         </span>
         <span
           className={`px-2 py-1.5 md:px-4 md:py-2 rounded-lg border-2 bg-white font-semibold text-sm md:text-xl text-center max-w-[46%] ${
@@ -220,6 +247,14 @@ export function TrialRunner({ block, trials, onBlockDone }: TrialRunnerProps) {
           data-testid="right-label"
         >
           {block.rightLabel}
+          {desktopKeys && (
+            <span
+              className="mx-1.5 inline-flex items-center justify-center rounded-md border-2 border-current bg-white px-1.5 py-0.5 align-middle font-mono text-base font-bold leading-none"
+              dir="ltr"
+            >
+              {block.rightKey}
+            </span>
+          )}
         </span>
       </div>
 
@@ -261,7 +296,7 @@ export function TrialRunner({ block, trials, onBlockDone }: TrialRunnerProps) {
                 ✕
               </span>
               <span className="text-sm md:text-base font-medium text-red-700">
-                دکمهٔ سبزرنگ را فشار دهید
+                {desktopKeys ? "کلید سبزرنگ را فشار دهید" : "دکمهٔ سبزرنگ را فشار دهید"}
               </span>
             </>
           ) : null}
@@ -295,7 +330,13 @@ export function TrialRunner({ block, trials, onBlockDone }: TrialRunnerProps) {
           }`}
           data-testid="left-button"
         >
-          {block.leftLabel}
+          {desktopKeys ? (
+            <span className="font-mono text-3xl md:text-4xl font-bold tracking-widest" dir="ltr">
+              {block.leftKey}
+            </span>
+          ) : (
+            block.leftLabel
+          )}
         </button>
         <button
           type="button"
@@ -311,7 +352,13 @@ export function TrialRunner({ block, trials, onBlockDone }: TrialRunnerProps) {
           }`}
           data-testid="right-button"
         >
-          {block.rightLabel}
+          {desktopKeys ? (
+            <span className="font-mono text-3xl md:text-4xl font-bold tracking-widest" dir="ltr">
+              {block.rightKey}
+            </span>
+          ) : (
+            block.rightLabel
+          )}
         </button>
       </div>
     </div>

@@ -292,3 +292,22 @@ Work Log:
 Stage Summary:
 - PRODUCTION https://iat-seven.vercel.app fully serves: 18px B Nazanin, 6-field demographics, speed-first instructions, researcher first-page statement, v1.6.0.
 - User should revoke the GitHub PAT shared in chat (again advised).
+
+---
+Task ID: desktop-keys-1
+Agent: Z.ai Code (main)
+Task: Desktop response buttons show E/I key letters instead of category names; mobile untouched; explicit letter↔category mapping
+
+Work Log:
+- TrialRunner: new useDesktopKeys() hook (pointer:fine + hover:hover, lazy init) → on desktop the two response buttons render large mono E / I letters (block.leftKey/rightKey) instead of category labels; top pinned category labels gain a matching key badge (bordered mono chip) so the mapping is explicit; error-correction hint becomes «کلید سبزرنگ را فشار دهید» on desktop. Touch devices (phones/tablets) keep the EXACT previous rendering (full labels on buttons, no badges). aria-labels unchanged (full category names for screen readers); button geometry/timing untouched (no layout shift).
+- BlockIntro (IatApp): same detection; left/right group boxes show the key badges on desktop.
+- blocks.ts: 5 instruction bodies reworded device-neutral: «نام هر گروه بالای صفحه مشخص است؛ روی رایانه با کلیدهای E و I و روی گوشی با دکمه‌های پایین صفحه پاسخ دهید.» (reversed blocks: «قبل از شروع، نام گروه‌ها را بالای صفحه بررسی کنید؛ …»).
+- Intro page sentence updated: desktop shows key-letter buttons + keyboard input, mobile/tablet shows large touch buttons.
+- Test definition 1.6.0 → 1.7.0 (+ CHANGELOG); instruction wording is part of the versioned plan snapshot. Seeded shared Neon DB → v1.7.0 active.
+- Quality gates: eslint 0, tsc 0.
+- E2E (agent-browser): headless Chromium reports pointer:none (quirk) — desktop path verified by stubbing matchMedia before component mount: block intro shows E/I badges next to «ایرانی»/«افغان»; trial screen buttons render big E / I; keyboard "e" press responds, wrong answer → ✕ + green correct key + desktop hint text; real-device semantics (pointer:fine+hover) unchanged. Mobile (iPhone 14 emulation): full flow to block 1 — buttons still show «ایرانی»/«افغان» labels, no badges (untouched). Robotic E2E participants removed (36 remain: 28 DEMO + 8 real).
+- Committed and pushed 3158150..{new} (v1.5.0 real photos + v1.6.0 demographics + v1.7.0 desktop keys all delivered).
+
+Stage Summary:
+- Desktop = classic IAT key layout (E/I buttons + badges on top labels); mobile = unchanged labeled buttons; mapping ambiguity prevented by badges in trial screen AND block instructions.
+- v1.7.0 active in DB; production deploy triggered by push.
