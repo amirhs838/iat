@@ -57,3 +57,5 @@ prompt
 server.log
 # Skills directory
 /skills/
+# working artifacts (research tooling outputs; not part of the app)
+/tool-results/
