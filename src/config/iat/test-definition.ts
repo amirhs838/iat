@@ -1,9 +1,13 @@
 import type { TestDefinition } from "@/lib/iat/types";
 
 // =============================================================================
-// IAT TEST DEFINITION — VERSION 1.5.0 (single source of truth)
+// IAT TEST DEFINITION — VERSION 1.6.0 (single source of truth)
 // =============================================================================
 // CHANGELOG:
+//   v1.6.0 — Block instructions re-worded per researcher request: the
+//            speed emphasis is now explicit ("تا جای ممکن سریع پاسخ دهید؛
+//            دقت لازم نیست.") instead of "هم سرعت و هم دقت مهم است.".
+//            Stimuli, block structure, timing and scoring unchanged.
 //   v1.5.0 — The 16 shipped target stimuli are now ACTUALLY replaced with
 //            curated REAL photographs (the v1.4.0 release had updated the
 //            admin/config plumbing but the image files on disk were still
@@ -78,7 +82,7 @@ import type { TestDefinition } from "@/lib/iat/types";
 
 export const IAT_TEST_DEFINITION: TestDefinition = {
   name: "IAT Iranian–Afghan × Positive–Negative",
-  version: "1.5.0",
+  version: "1.6.0",
   code: "iranian-afghan-att",
   scoringVersion: "improved-d-2003/v1",
   language: "fa",

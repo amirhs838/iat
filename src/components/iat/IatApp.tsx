@@ -74,14 +74,18 @@ const BUFFER_KEY = "iat-pending-session-v1";
 // Helpers
 // ---------------------------------------------------------------------------
 
-const GENDERS = ["زن", "مرد", "سایر", "ترجیح می‌دهم نگویم"];
+const GENDERS = ["مرد", "زن", "ترجیح می‌دهم نگویم"];
 const EDUCATIONS = ["زیر دیپلم", "دیپلم", "کاردانی", "کارشناسی", "کارشناسی ارشد", "دکتری"];
-const PROVINCES = [
-  "آذربایجان شرقی", "آذربایجان غربی", "اردبیل", "اصفهان", "البرز", "ایلام", "بوشهر", "تهران",
-  "چهارمحال و بختیاری", "خراسان جنوبی", "خراسان رضوی", "خراسان شمالی", "خوزستان", "زنجان",
-  "سمنان", "سیستان و بلوچستان", "فارس", "قزوین", "قم", "کردستان", "کرمان", "کرمانشاه",
-  "کهگیلویه و بویراحمد", "گلستان", "گیلان", "لرستان", "مازندران", "مرکزی", "هرمزگان", "همدان", "یزد", "سایر",
+// Monthly approximate household income brackets (Toman) — fixed per researcher spec
+const INCOMES = [
+  "زیر ۲۵ میلیون تومان",
+  "۲۵ تا ۵۰ میلیون تومان",
+  "۵۰ تا ۷۰ میلیون تومان",
+  "بالای ۱۰۰ میلیون تومان",
+  "ترجیح می‌دهم نگویم",
 ];
+const RELIGIOSITIES = ["اصلاً", "کمی", "متوسط", "زیاد", "خیلی زیاد", "ترجیح می‌دهم نگویم"];
+const OCCUPATIONS = ["شاغل", "بیکار", "بازنشسته", "دانشجو"];
 
 interface CompatResult {
   ok: boolean;
@@ -130,7 +134,14 @@ export function IatApp() {
   const [creating, setCreating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<CompleteResponse["result"] | null>(null);
-  const [demographics, setDemographics] = useState({ age: "", gender: "", education: "", province: "" });
+  const [demographics, setDemographics] = useState({
+    age: "",
+    gender: "",
+    education: "",
+    income: "",
+    religiosity: "",
+    occupation: "",
+  });
   const [consented, setConsented] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
 
@@ -239,7 +250,9 @@ export function IatApp() {
           age: parseInt(normalizeDigits(demographics.age).trim(), 10),
           gender: demographics.gender,
           education: demographics.education,
-          province: demographics.province || null,
+          income: demographics.income,
+          religiosity: demographics.religiosity,
+          occupation: demographics.occupation,
           environment: {
             screenWidth: compat?.screenWidth ?? 0,
             screenHeight: compat?.screenHeight ?? 0,
@@ -454,6 +467,18 @@ export function IatApp() {
       setDemoError("تحصیلات را انتخاب کنید.");
       return;
     }
+    if (!demographics.income) {
+      setDemoError("درآمد تقریبی ماهانه را انتخاب کنید.");
+      return;
+    }
+    if (!demographics.religiosity) {
+      setDemoError("میزان مذهبی‌بودن را انتخاب کنید.");
+      return;
+    }
+    if (!demographics.occupation) {
+      setDemoError("وضعیت شغلی را انتخاب کنید.");
+      return;
+    }
     setDemoError(null);
     void startCreation();
   }, [demographics, startCreation]);
@@ -511,13 +536,25 @@ export function IatApp() {
     return (
       <Centered>
         <Card className="max-w-2xl w-full text-right">
-          <CardContent className="p-8 space-y-4">
+          <CardContent className="p-8 space-y-5">
             <h2 className="text-2xl font-bold">آزمون تداعی ضمنی (IAT)</h2>
-            <div className="space-y-3 text-sm leading-7 text-muted-foreground">
+            {/* Researcher statement — shown verbatim on the first page */}
+            <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-4 space-y-1 text-center">
+              <p className="text-base leading-8 text-foreground">
+                این پاسخ‌ها و اطلاعات در راستای یک پژوهش علمی در چارچوب یک پایان‌نامه کارشناسی ارشد است.
+              </p>
+              <p className="text-base leading-8 text-foreground">ممنون از وقتی که می‌گذارید.</p>
+              <p className="text-base leading-8 font-bold">با تشکر</p>
+              <p className="text-base leading-8 font-bold">فاطمه بابازاده، دانشجوی کارشناسی ارشد روانشناسی شناختی</p>
+            </div>
+            <div className="space-y-3 text-base leading-8 text-muted-foreground">
               <p>
                 در این آزمون تصویرها و واژه‌هایی نمایش داده می‌شود و شما آن‌ها را با دو دکمهٔ بزرگ پایین صفحه
                 طبقه‌بندی می‌کنید. آزمون شامل <b className="text-foreground">۷ بخش</b> و حدود ۲۰۰ مرحله است و
                 حدود ۱۰ تا ۱۲ دقیقه زمان می‌برد.
+              </p>
+              <p className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-amber-900 font-semibold">
+                تا جای ممکن سریع پاسخ دهید؛ دقت لازم نیست.
               </p>
               <p>
                 در صورت اشتباه، نشان ✕ ظاهر می‌شود و دکمهٔ درست سبزرنگ می‌شود؛ همان دکمه را بزنید تا مرحله
@@ -543,7 +580,7 @@ export function IatApp() {
         <Card className="max-w-2xl w-full text-right">
           <CardContent className="p-8 space-y-4">
             <h2 className="text-2xl font-bold">رضایت آگاهانه</h2>
-            <div className="text-sm leading-7 text-muted-foreground space-y-2">
+            <div className="text-base leading-8 text-muted-foreground space-y-2">
               <p>
                 مشارکت شما کاملاً داوطلبانه است و می‌توانید در هر مرحله از ادامه مشارکت صرف‌نظر کنید. داده‌ها
                 به‌صورت ناشناس ذخیره می‌شوند؛ هیچ اطلاعات هویتی (نام، شماره تماس یا نشانی) جمع‌آوری نمی‌شود.
@@ -555,7 +592,7 @@ export function IatApp() {
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
               <Checkbox checked={consented} onCheckedChange={(v) => setConsented(v === true)} id="consent" />
-              <span className="text-sm font-medium">
+              <span className="text-base font-medium">
                 شرایط بالا را خواندم و با مشارکت داوطلبانه در این پژوهش موافقم.
               </span>
             </label>
@@ -579,7 +616,7 @@ export function IatApp() {
         <Card className="max-w-xl w-full text-right">
           <CardContent className="p-8 space-y-4">
             <h2 className="text-2xl font-bold">اطلاعات جمعیت‌شناختی</h2>
-            <p className="text-xs text-muted-foreground">این اطلاعات ناشناس و فقط برای تحلیل پژوهشی است.</p>
+            <p className="text-sm text-muted-foreground">این اطلاعات ناشناس و فقط برای تحلیل پژوهشی است.</p>
             <div className="grid gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="age">سن</Label>
@@ -640,16 +677,49 @@ export function IatApp() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>استان (اختیاری)</Label>
+                <Label>درآمد تقریبی در ماه</Label>
+                <Select value={demographics.income} onValueChange={(v) => setDemographics((d) => ({ ...d, income: v }))}>
+                  <SelectTrigger dir="rtl">
+                    <SelectValue placeholder="انتخاب کنید" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INCOMES.map((g) => (
+                      <SelectItem key={g} value={g}>
+                        {g}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>تا چه حد خود را مذهبی می‌دانید؟</Label>
                 <Select
-                  value={demographics.province}
-                  onValueChange={(v) => setDemographics((d) => ({ ...d, province: v }))}
+                  value={demographics.religiosity}
+                  onValueChange={(v) => setDemographics((d) => ({ ...d, religiosity: v }))}
                 >
                   <SelectTrigger dir="rtl">
-                    <SelectValue placeholder="انتخاب کنید (اختیاری)" />
+                    <SelectValue placeholder="انتخاب کنید" />
                   </SelectTrigger>
-                  <SelectContent className="max-h-72 overflow-y-auto scrollbar-thin">
-                    {PROVINCES.map((g) => (
+                  <SelectContent>
+                    {RELIGIOSITIES.map((g) => (
+                      <SelectItem key={g} value={g}>
+                        {g}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>شغل</Label>
+                <Select
+                  value={demographics.occupation}
+                  onValueChange={(v) => setDemographics((d) => ({ ...d, occupation: v }))}
+                >
+                  <SelectTrigger dir="rtl">
+                    <SelectValue placeholder="انتخاب کنید" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OCCUPATIONS.map((g) => (
                       <SelectItem key={g} value={g}>
                         {g}
                       </SelectItem>

@@ -56,8 +56,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ data
   try {
     if (dataset === "participants") {
       const items = await db.participant.findMany({ orderBy: { createdAt: "asc" } });
-      const headers = ["id", "anonymousId", "age", "gender", "education", "province", "consent", "consentAt", "createdAt"];
-      const rows = items.map((p) => [p.id, p.anonymousId, p.age, p.gender, p.education, p.province, p.consent, p.consentAt?.toISOString() ?? "", p.createdAt.toISOString()]);
+      const headers = ["id", "anonymousId", "age", "gender", "education", "income", "religiosity", "occupation", "consent", "consentAt", "createdAt"];
+      const rows = items.map((p) => [p.id, p.anonymousId, p.age, p.gender, p.education, p.income, p.religiosity, p.occupation, p.consent, p.consentAt?.toISOString() ?? "", p.createdAt.toISOString()]);
       return csvOrJson(headers, rows, items, "participants");
     }
 

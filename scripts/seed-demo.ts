@@ -42,9 +42,11 @@ async function main() {
   }
 
   const N = 40;
-  const genders = ["زن", "مرد"];
+  const genders = ["مرد", "زن", "ترجیح می‌دهم نگویم"];
   const educations = ["دیپلم", "کاردانی", "کارشناسی", "کارشناسی ارشد", "دکتری"];
-  const provinces = ["تهران", "اصفهان", "فارس", "خراسان رضوی", "آذربایجان شرقی", "گیلان", "خوزستان"];
+  const incomes = ["زیر ۲۵ میلیون تومان", "۲۵ تا ۵۰ میلیون تومان", "۵۰ تا ۷۰ میلیون تومان", "بالای ۱۰۰ میلیون تومان", "ترجیح می‌دهم نگویم"];
+  const religiosities = ["اصلاً", "کمی", "متوسط", "زیاد", "خیلی زیاد", "ترجیح می‌دهم نگویم"];
+  const occupations = ["شاغل", "بیکار", "بازنشسته", "دانشجو"];
 
   let done = 0;
   for (let i = 0; i < N; i++) {
@@ -56,9 +58,11 @@ async function main() {
       data: {
         anonymousId: `DEMO-${generateAnonymousId().slice(2)}`,
         age: 18 + Math.floor(rand() * 30),
-        gender: genders[Math.floor(rand() * 2)],
+        gender: genders[Math.floor(rand() * genders.length)],
         education: educations[Math.floor(rand() * educations.length)],
-        province: provinces[Math.floor(rand() * provinces.length)],
+        income: incomes[Math.floor(rand() * incomes.length)],
+        religiosity: religiosities[Math.floor(rand() * religiosities.length)],
+        occupation: occupations[Math.floor(rand() * occupations.length)],
         consent: true,
         consentAt: new Date(Date.now() - Math.floor(rand() * 30) * 86400000),
       },

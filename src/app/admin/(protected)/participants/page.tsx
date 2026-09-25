@@ -29,7 +29,9 @@ type ParticipantRow = {
   age: number | null;
   gender: string | null;
   education: string | null;
-  province: string | null;
+  income: string | null;
+  religiosity: string | null;
+  occupation: string | null;
   consent: boolean;
   consentAt: string | null;
   createdAt: string;
@@ -179,7 +181,8 @@ export default function ParticipantsPage() {
                       <TableHead className="text-center">سن</TableHead>
                       <TableHead>جنسیت</TableHead>
                       <TableHead>تحصیلات</TableHead>
-                      <TableHead>استان</TableHead>
+                      <TableHead>درآمد</TableHead>
+                      <TableHead>شغل</TableHead>
                       <TableHead className="text-center">رضایت</TableHead>
                       <TableHead>تاریخ عضویت</TableHead>
                       <TableHead className="text-center">جلسه‌ها</TableHead>
@@ -190,7 +193,7 @@ export default function ParticipantsPage() {
                     {loading
                       ? Array.from({ length: 8 }).map((_, i) => (
                           <TableRow key={`sk-${i}`}>
-                            {Array.from({ length: 9 }).map((__, j) => (
+                            {Array.from({ length: 10 }).map((__, j) => (
                               <TableCell key={`sk-${i}-${j}`}>
                                 <Skeleton className="h-4 w-full" />
                               </TableCell>
@@ -200,7 +203,7 @@ export default function ParticipantsPage() {
                       : items.length === 0
                         ? (
                           <TableRow>
-                            <TableCell colSpan={9} className="h-40 text-center">
+                            <TableCell colSpan={10} className="h-40 text-center">
                               <div className="flex flex-col items-center gap-2 text-muted-foreground">
                                 <Users className="h-8 w-8 opacity-40" />
                                 <p className="text-sm">
@@ -222,7 +225,8 @@ export default function ParticipantsPage() {
                               </TableCell>
                               <TableCell>{p.gender ?? "—"}</TableCell>
                               <TableCell>{p.education ?? "—"}</TableCell>
-                              <TableCell>{p.province ?? "—"}</TableCell>
+                              <TableCell className="text-xs">{p.income ?? "—"}</TableCell>
+                              <TableCell>{p.occupation ?? "—"}</TableCell>
                               <TableCell className="text-center">
                                 {p.consent ? (
                                   <Badge className="gap-1" title={p.consentAt ? formatDateFa(p.consentAt) : undefined}>

@@ -67,7 +67,9 @@ model Participant {
   age         Int?
   gender      String?
   education   String?
-  province    String?
+  income      String?  // monthly approximate income bracket (Toman)
+  religiosity String?  // self-rated religiosity level
+  occupation  String?  // employed / unemployed / retired / student
   consent     Boolean   @default(false)
   consentAt   DateTime?
   createdAt   DateTime  @default(now())

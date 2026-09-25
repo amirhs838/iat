@@ -84,7 +84,9 @@ interface SessionDetail {
     age: number | null;
     gender: string | null;
     education: string | null;
-    province: string | null;
+    income: string | null;
+    religiosity: string | null;
+    occupation: string | null;
     consent: boolean;
     consentAt: string | null;
     createdAt: string;
@@ -359,10 +361,13 @@ export default function AdminSessionDetailPage() {
                 p.gender ?? "",
                 p.age !== null ? `${toFa(p.age)} سال` : "",
                 p.education ?? "",
+                p.occupation ?? "",
               ]
                 .filter(Boolean)
                 .join("، ") || "—"}
             </InfoItem>
+            <InfoItem label="درآمد ماهانه">{p.income ?? "—"}</InfoItem>
+            <InfoItem label="مذهبی‌بودن">{p.religiosity ?? "—"}</InfoItem>
             <InfoItem label="رضایت آگاهانه">
               {p.consent ? `ثبت شده${p.consentAt ? ` — ${formatDateTimeFa(p.consentAt)}` : ""}` : "—"}
             </InfoItem>

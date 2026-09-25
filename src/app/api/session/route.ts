@@ -23,7 +23,9 @@ const BodySchema = z.object({
   age: z.number().int().min(8).max(100),
   gender: z.string().min(1).max(50),
   education: z.string().min(1).max(60),
-  province: z.string().max(60).nullish(),
+  income: z.string().min(1).max(60),
+  religiosity: z.string().min(1).max(60),
+  occupation: z.string().min(1).max(60),
   environment: z
     .object({
       screenWidth: z.number().int().min(0).max(20000),
@@ -74,7 +76,9 @@ export async function POST(req: NextRequest) {
       age: body.age,
       gender: body.gender,
       education: body.education,
-      province: body.province ?? null,
+      income: body.income,
+      religiosity: body.religiosity,
+      occupation: body.occupation,
       consent: true,
       consentAt: new Date(),
     },

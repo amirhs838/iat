@@ -258,3 +258,23 @@ Stage Summary:
 - LOCAL COMPLETE + VERIFIED: real-photo stimulus set v1.5.0 (16 files, 728KB→~1MB), attribution documented, admin text-editing confirmed working
 - TO DEPLOY: push main (needs fresh GitHub token from user) → Vercel auto-builds → re-seed prod DB (bun run db:seed with prod env) → verify iat-seven.vercel.app
 - Screenshots: tool-results/v15-home.png, v15-stimuli-panel2.png, v15-block1-trial.png, shipped-v15.jpg
+
+---
+Task ID: demographics-instructions-1
+Agent: Z.ai Code (main)
+Task: Standard font size, 6-field demographics form, speed-first instructions, researcher statement on first page (user message 16)
+
+Work Log:
+- Font: root font-size raised 16px → 18px in globals.css (B Nazanin is optically small; all rem-based sizes scale site-wide, participant + admin). Participant-flow body text bumped text-sm → text-base (intro/consent/consent-checkbox/demographics subtitle).
+- Demographics rebuilt to EXACTLY the researcher's 6 fields: سن (Persian-digit input), جنسیت (مرد/زن/ترجیح می‌دهم نگویم — سایر removed), تحصیلات (standard ladder kept), درآمد تقریبی در ماه (زیر ۲۵ / ۲۵–۵۰ / ۵۰–۷۰ / بالای ۱۰۰ میلیون تومان / ترجیح می‌دهم نگویم — exactly as specified, gap ۷۰–۱۰۰ flagged to researcher), تا چه حد خود را مذهبی می‌دانید؟ (اصلاً/کمی/متوسط/زیاد/خیلی زیاد/ترجیح می‌دهم نگویم), شغل (شاغل/بیکار/بازنشسته/دانشجو). استان (province) removed entirely.
+- Schema: Participant.province → income/religiosity/occupation (db:push --accept-data-loss, only 35 DEMO rows affected); Prisma client regenerated; dev server restarted (stale-client pitfall).
+- Server-side: session API zod schema + participant.create updated; admin participants API select, participants page (استان column → درآمد + شغل, skeleton/colSpan 9→10), session detail page (interface + جمعیت‌شناسی join + two new InfoItems), participants CSV export headers/rows all updated. seed-demo.ts fields replaced.
+- Instructions: all 5 block instruction bodies in blocks.ts now end "تا جای ممکن سریع پاسخ دهید؛ دقت لازم نیست." (was "هم سرعت و هم دقت مهم است."); intro page adds the same sentence in a highlighted amber box.
+- Intro (first) page: researcher statement block added verbatim above the test description — «این پاسخ‌ها و اطلاعات در راستای یک پژوهش علمی در چارچوب یک پایان‌نامه کارشناسی ارشد است. / ممنون از وقتی که می‌گذارید. / با تشکر / فاطمه بابازاده، دانشجوی کارشناسی ارشد روانشناسی شناختی».
+- Test definition bumped 1.5.0 → 1.6.0 (instruction wording is part of the session plan snapshot; versioned for reproducibility) + CHANGELOG entry; seeded (shared Neon DB) → v1.6.0 active.
+- E2E (agent-browser): intro shows statement + speed box in larger B Nazanin (desktop + iPhone 14 screenshots); consent → demographics shows exactly 6 fields; Persian-digit age ۲۵ accepted; session created; block-1 instruction shows new wording; trial response advances; admin participants table (درآمد/شغل), session detail (درآمد ماهانه=۲۵ تا ۵۰, مذهبی‌بودن=متوسط), participants CSV export includes income/religiosity/occupation. Robotic E2E participant P-M6VJJMZB deleted. eslint 0, tsc 0.
+
+Stage Summary:
+- New demographics (6 fields) + speed-first instructions + researcher first-page statement + 18px B Nazanin are live locally and in the shared Neon DB (v1.6.0 active).
+- NOTE for researcher: income options have no bracket between ۷۰ and ۱۰۰ میلیون تومان (implemented exactly as specified — say the word to add ۷۰ تا ۱۰۰).
+- NOTE: production iat-seven.vercel.app gets the code on next push; DB side (schema + v1.6.0) already applied.
