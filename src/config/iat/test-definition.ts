@@ -1,9 +1,21 @@
 import type { TestDefinition } from "@/lib/iat/types";
 
 // =============================================================================
-// IAT TEST DEFINITION — VERSION 1.2.0 (single source of truth)
+// IAT TEST DEFINITION — VERSION 1.4.0 (single source of truth)
 // =============================================================================
 // CHANGELOG:
+//   v1.4.0 — Target stimuli replaced again per researcher feedback: the
+//            AI-generated portraits of v1.3.0 were rejected as "not real".
+//            The set is now REAL photographs of Iranian and Afghan people
+//            (color, 480×600, face-centered frontal crops) sourced via a
+//            standard web image search; per-slot provenance is recorded in
+//            public/iat/stimuli/ATTRIBUTION.md. Admin panel gained inline
+//            editing of attribute words (PATCH /api/admin/stimuli) and the
+//            upload flow now stores replacements in the DB
+//            (served via /api/stimuli-image/[key]) so it works on Vercel.
+//            Engine, timing, block structure and scoring unchanged.
+//   v1.3.0 — B Nazanin font (self-hosted woff2) + AI-generated standardized
+//            portraits (superseded in v1.4.0).
 //   v1.2.0 — Target stimuli replaced: real reference photographs (CC-licensed
 //            photos of Iranian and Afghan people from Wikimedia Commons and
 //            Flickr via Openverse; grayscale, 480×600, face-centered crop)
@@ -37,6 +49,9 @@ import type { TestDefinition } from "@/lib/iat/types";
 //
 // 3) CATEGORY NAMES / LABELS:
 //    Edit `label` fields — engine, UI and scoring all read from here.
+//    NOTE: attribute words can also be edited at runtime from the admin panel
+//    (پنل مدیریت → محرک‌ها); the DB Stimulus registry overrides the static
+//    paths/labels here for NEW sessions (see src/lib/iat/registry.ts).
 //
 // 4) After changing this file, bump `version`, re-run `bun run db:seed`
 //    and create a new TestVersion snapshot (see README → Versioning).
@@ -46,18 +61,19 @@ import type { TestDefinition } from "@/lib/iat/types";
 //    (Greenwald, McGhee & Schwartz, 1998; Greenwald, Nosek & Banaji, 2003):
 //    positive: glorious, laughter, happy, love, peace, wonderful, pleasure, beautiful
 //    negative: terrible, horrible, evil, hatred, awful, failure, agony, brutal
-//    Persian translations are used as the default display words for this study.
-//    Target IMAGES: standardized frontal head-shot portraits (4 men + 4 women
-//    per category, 20–35 years, neutral expression, uniform light-gray
-//    background). The current placeholder set is AI-generated for visual
-//    consistency; for final data collection replace them with real photos via
-//    admin → محرک‌ها (see STIMULUS_SPEC below for per-slot requirements) and
-//    disclose the stimulus source in the thesis.
+//    Persian translations are the default display words; they are editable
+//    from the admin panel without code changes.
+//    Target IMAGES: real frontal head-shot photographs (4 men + 4 women per
+//    category, adults, neutral-to-mild expression, face filling the frame,
+//    plain/unobtrusive background, no text or watermarks) — see
+//    public/iat/stimuli/ATTRIBUTION.md for per-image provenance. The
+//    researcher MUST vet image content and usage rights before final data
+//    collection and disclose the stimulus source in the thesis.
 // =============================================================================
 
 export const IAT_TEST_DEFINITION: TestDefinition = {
   name: "IAT Iranian–Afghan × Positive–Negative",
-  version: "1.3.0",
+  version: "1.4.0",
   code: "iranian-afghan-att",
   scoringVersion: "improved-d-2003/v1",
   language: "fa",
@@ -76,10 +92,12 @@ export const IAT_TEST_DEFINITION: TestDefinition = {
   },
 
   // -------------------------------------------------------------------------
-  // TARGET CATEGORIES — real reference photographs (grayscale 480×600).
-  // These are CC-licensed web photographs that satisfy the per-slot spec;
-  // the researcher MUST vet/replace them via the admin panel before the
-  // final data collection (see STIMULUS_SPEC and admin → محرک‌ها).
+  // TARGET CATEGORIES — real photographs (color, 480×600, face-centered).
+  // Files were sourced via a standard web image search and manually vetted:
+  // frontal face-only crops, adults, no watermarks/text, gender-balanced
+  // (4 men + 4 women per category). See ATTRIBUTION.md for provenance; the
+  // researcher must vet licensing before final data collection and can
+  // replace any slot via admin → محرک‌ها.
   // -------------------------------------------------------------------------
   targets: [
     {
@@ -182,28 +200,28 @@ export const IAT_TEST_DEFINITION: TestDefinition = {
 
 export const STIMULUS_SPEC_GENERAL: Record<string, string> = {
   iranian:
-    "چهره‌ی تمام‌رخ و بزرگ‌نمایی‌شده‌ی یک فرد بزرگسال ایرانی (۲۰–۳۵ سال)، حالت خنثی، نگاه مستقیم به دوربین، پس‌زمینه‌ی یکدست خاکستری روشن، نور یکنواخت؛ فقط صورت و لبه‌ی شانه‌ها در کادر است (بدون بدن، بدون عینک، بدون تزئینات). ترکیب دسته: ۴ مرد + ۴ زن. نشانه‌های گروهی: چهره‌ی فارسی/ایرانی؛ مردان با موی کوتاه مدرن و ریش کوتاه یا بدون ریش؛ زنان با روسری تیره‌ی ساده که فقط مو را می‌پوشاند و صورت کاملاً پیدا است.",
+    "عکس واقعی (نه ساختگی) چهره‌ی تمام‌رخ و بزرگ‌نمایی‌شده‌ی یک فرد بزرگسال ایرانی، نگاه مستقیم به دوربین، حالت چهره‌ی خنثی یا ملایم؛ صورت در کادر بزرگ است و فقط صورت و لبه‌ی شانه‌ها دیده می‌شود؛ بدون متن، واترمارک یا عینک آفتابی. نشانه‌های گروهی: چهره و استایل ایرانیِ رایج — مردان با موی کوتاه مدرن و ریش کوتاه/ته‌ریش یا بدون ریش؛ زنان با روسری ساده که فقط مو را می‌پوشاند و صورت کاملاً پیدا است. ترکیب دسته: ۴ مرد + ۴ زن.",
   afghan:
-    "چهره‌ی تمام‌رخ و بزرگ‌نمایی‌شده‌ی یک فرد بزرگسال افغان (۲۰–۳۵ سال)، حالت خنثی، نگاه مستقیم به دوربین، پس‌زمینه‌ی یکدست خاکستری روشن، نور یکنواخت؛ فقط صورت و لبه‌ی شانه‌ها در کادر است (بدون بدن، بدون عینک، بدون تزئینات). ترکیب دسته: ۴ مرد + ۴ زن. نشانه‌های گروهی: چهره‌ی پشتون/هزاره‌ی افغانستانی با ویژگی‌های متمایز؛ مردان با ریش کامل پرپشت و یقه‌ی سنتی پراهن‌تنبان؛ زنان با روسری رنگی سنتی که روی سر و شانه انداخته می‌شود.",
+    "عکس واقعی (نه ساختگی) چهره‌ی تمام‌رخ و بزرگ‌نمایی‌شده‌ی یک فرد بزرگسال افغان، نگاه مستقیم به دوربین، حالت چهره‌ی خنثی یا ملایم؛ صورت در کادر بزرگ است و فقط صورت و لبه‌ی شانه‌ها دیده می‌شود؛ بدون متن، واترمارک یا عینک آفتابی. نشانه‌های گروهی: چهره و استایل متمایز افغانستانی — مردان پشتون (کلاه پکول/دستار یا ریش کامل و یقه‌ی سنتی پراهن‌تنبان) یا هزاره (ویژگی‌های شرق‌آسیایی)؛ زنان با روسری سنتی رنگی که روی سر و شانه انداخته می‌شود، از جمله زنان هزاره با ویژگی‌های شرق‌آسیایی. ترکیب دسته: ۴ مرد + ۴ زن.",
 };
 
 export const STIMULUS_SPEC: Record<string, string> = {
-  "iranian-01": "مرد ایرانی (۱) — ۲۷ سال، موی کوتاه مدرن سیاه، بدون ریش، پوست زیتونی روشن، صورت کشیده.",
-  "iranian-02": "مرد ایرانی (۲) — ۳۱ سال، موی کوتاه تیره، ته‌ریش کوتاه، پوست گندمی، صورت گردتر.",
-  "iranian-03": "مرد ایرانی (۳) — ۲۴ سال، موی موج‌دار کوتاه تیره، بدون ریش، پوست روشن.",
-  "iranian-04": "مرد ایرانی (۴) — ۳۴ سال، موی کوتاه تیره، ریش کوتاه مرتب، پوست زیتونی تیره‌تر، صورت کشیده.",
-  "iranian-05": "زن ایرانی (۱) — ۲۶ سال، روسری سیاه که فقط مو را می‌پوشاند، صورت کاملاً پیدا، پوست روشن، صورت بیضی.",
-  "iranian-06": "زن ایرانی (۲) — ۳۰ سال، روسری سرمه‌ای، صورت پیدا، پوست گندمی روشن، صورت کشیده‌تر.",
-  "iranian-07": "زن ایرانی (۳) — ۲۳ سال، روسری قهوه‌ای تیره، صورت پیدا، پوست زیتونی، صورت پرتر.",
-  "iranian-08": "زن ایرانی (۴) — ۳۲ سال، روسری خاکستری زغالی، صورت پیدا، پوست گندمی، گونه‌های برجسته.",
-  "afghan-01": "مرد افغان (۱) — پشتون، ۲۹ سال، ریش کامل پرپشت سیاه، چشم‌های گود، پوست گندمی، یقه‌ی سنتی پراهن‌تنبان.",
-  "afghan-02": "مرد افغان (۲) — پشتون، ۳۳ سال، ریش کامل تیره با کمی سفیدی، بینی برجسته، پوست برنزه، یقه‌ی سنتی کرم.",
-  "afghan-03": "مرد افغان (۳) — پشتون، ۲۵ سال، ریش کامل پرپشت جوان، فک زاویه‌دار، پوست قهوه‌ای روشن، یقه‌ی سنتی خاکستری.",
-  "afghan-04": "مرد افغان (۴) — هزاره، ۲۸ سال، ریش کامل سیاه، چهره‌ی پهن با گونه‌های برجسته (ویژگی‌های شرق‌آسیایی)، یقه‌ی سنتی قهوه‌ای.",
-  "afghan-05": "زن افغان (۱) — پشتون، ۲۷ سال، روسری سنتی آبی روشن روی سر و شانه، پوست گندمی گرم.",
-  "afghan-06": "زن افغان (۲) — هزاره، ۳۰ سال، روسری سنتی سبز آبی روی سر و شانه، ویژگی‌های شرق‌آسیایی، گونه‌های برجسته.",
-  "afghan-07": "زن افغان (۳) — پشتون، ۲۴ سال، روسری سنتی نارنجی-قرمز روی سر و شانه، پوست گندمی طلایی، صورت گرد.",
-  "afghan-08": "زن افغان (۴) — ۳۳ سال، روسری سنتی سبز تیره به‌صورت آزاد روی سر و شانه، چهره‌ی قوی، پوست گندمی تیره‌تر.",
+  "iranian-01": "مرد ایرانی (۱) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، موی کوتاه مدرن، ریش کوتاه/ته‌ریش یا بدون ریش، نگاه مستقیم، فقط صورت در کادر.",
+  "iranian-02": "مرد ایرانی (۲) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، موی کوتاه مدرن، ریش کوتاه/ته‌ریش یا بدون ریش، نگاه مستقیم، فقط صورت در کادر.",
+  "iranian-03": "مرد ایرانی (۳) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، موی کوتاه مدرن، ریش کوتاه/ته‌ریش یا بدون ریش، نگاه مستقیم، فقط صورت در کادر.",
+  "iranian-04": "مرد ایرانی (۴) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، موی کوتاه مدرن، ریش کوتاه/ته‌ریش یا بدون ریش، نگاه مستقیم، فقط صورت در کادر.",
+  "iranian-05": "زن ایرانی (۱) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، روسری ساده که فقط مو را می‌پوشاند و صورت کاملاً پیدا است، نگاه مستقیم، فقط صورت در کادر.",
+  "iranian-06": "زن ایرانی (۲) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، روسری ساده که فقط مو را می‌پوشاند و صورت کاملاً پیدا است، نگاه مستقیم، فقط صورت در کادر.",
+  "iranian-07": "زن ایرانی (۳) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، روسری ساده که فقط مو را می‌پوشاند و صورت کاملاً پیدا است، نگاه مستقیم، فقط صورت در کادر.",
+  "iranian-08": "زن ایرانی (۴) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، روسری ساده که فقط مو را می‌پوشاند و صورت کاملاً پیدا است، نگاه مستقیم، فقط صورت در کادر.",
+  "afghan-01": "مرد افغان (۱) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، نشانه‌های پشتون/هزاره: کلاه پکول یا دستار سنتی، یا ریش کامل با یقه‌ی سنتی پراهن‌تنبان؛ نگاه مستقیم، فقط صورت در کادر.",
+  "afghan-02": "مرد افغان (۲) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، نشانه‌های پشتون/هزاره: کلاه پکول یا دستار سنتی، یا ریش کامل با یقه‌ی سنتی پراهن‌تنبان؛ نگاه مستقیم، فقط صورت در کادر.",
+  "afghan-03": "مرد افغان (۳) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، نشانه‌های پشتون/هزاره: کلاه پکول یا دستار سنتی، یا ریش کامل با یقه‌ی سنتی پراهن‌تنبان؛ نگاه مستقیم، فقط صورت در کادر.",
+  "afghan-04": "مرد افغان (۴) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، نشانه‌های پشتون/هزاره: کلاه پکول یا دستار سنتی، یا ریش کامل با یقه‌ی سنتی پراهن‌تنبان؛ نگاه مستقیم، فقط صورت در کادر.",
+  "afghan-05": "زن افغان (۱) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، روسری سنتی رنگی روی سر و شانه؛ ترجیحاً ویژگی‌های چهره‌ی پشتون یا هزاره (شرق‌آسیایی)؛ نگاه مستقیم، فقط صورت در کادر.",
+  "afghan-06": "زن افغان (۲) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، روسری سنتی رنگی روی سر و شانه؛ ترجیحاً ویژگی‌های چهره‌ی پشتون یا هزاره (شرق‌آسیایی)؛ نگاه مستقیم، فقط صورت در کادر.",
+  "afghan-07": "زن افغان (۳) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، روسری سنتی رنگی روی سر و شانه؛ ترجیحاً ویژگی‌های چهره‌ی پشتون یا هزاره (شرق‌آسیایی)؛ نگاه مستقیم، فقط صورت در کادر.",
+  "afghan-08": "زن افغان (۴) — عکس واقعی چهره‌ی تمام‌رخ بزرگ‌نمایی‌شده، روسری سنتی رنگی روی سر و شانه؛ ترجیحاً ویژگی‌های چهره‌ی پشتون یا هزاره (شرق‌آسیایی)؛ نگاه مستقیم، فقط صورت در کادر.",
 };
 
 /** Canonical block-order string stored on every session. */

@@ -242,6 +242,11 @@ model Stimulus {
   active        Boolean     @default(true)
   sortOrder     Int         @default(0)
   uploadedAt    DateTime? // when the current file was uploaded via the admin panel (null = seeded reference set)
+  // Admin-panel replacement image, stored IN THE DATABASE (base64 bytes) and
+  // served via GET /api/stimuli-image/[stimulusKey]. DB storage keeps the
+  // upload feature working on read-only serverless filesystems (e.g. Vercel).
+  uploadedData  String?
+  uploadedMime  String?
   testVersionId String
   testVersion   TestVersion @relation(fields: [testVersionId], references: [id])
 

@@ -16,13 +16,15 @@ async function seedAdmin() {
   const password = process.env.ADMIN_PASSWORD ?? "iat-admin-2024";
 
   const existing = await db.adminUser.findUnique({ where: { username } });
-  const passwordHash = await hashPassword(password);
   if (existing) {
-    await db.adminUser.update({ where: { id: existing.id }, data: { passwordHash } });
-    console.log(`admin user updated: ${username}`);
+    // SAFETY: never overwrite an existing admin password during re-seeding.
+    // Production databases are re-seeded on every stimulus/version change and
+    // the researcher may have changed the password via admin → تنظیمات.
+    console.log(`admin user exists, password left untouched: ${username}`);
   } else {
+    const passwordHash = await hashPassword(password);
     await db.adminUser.create({ data: { username, passwordHash } });
-    console.log(`admin user created: ${username}`);
+    console.log(`admin user created: ${username} (default password — change it in admin → تنظیمات)`);
   }
 }
 

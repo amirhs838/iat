@@ -2,15 +2,17 @@
 
 // =============================================================================
 // /admin/stimuli — stimulus registry with per-slot methodological spec.
-// Target image slots show what the image must contain (gender, ethnicity,
-// pose, grayscale...) + an upload control; uploads take effect for NEW
-// sessions. Attribute words are display-only (standard IAT lists).
+// Target image slots show what the image must contain (gender, group cues,
+// pose...) + an upload control; uploads are stored in the DB and take effect
+// for NEW sessions. Attribute words are editable inline (PATCH API) — edits
+// also apply to NEW sessions only; archived sessions keep their snapshot.
 // =============================================================================
 
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toFa } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +27,8 @@ import {
   Loader2,
   RotateCcw,
   CheckCircle2,
+  Check,
+  Pencil,
 } from "lucide-react";
 
 type StimulusItem = {
@@ -77,6 +81,14 @@ function faDateTime(iso: string | null): string {
   }
 }
 
+/** Thumbnail URL: DB-served uploads already carry a ?v= version; static
+ *  reference files get a cache-buster only when they were once replaced. */
+function thumbSrc(s: StimulusItem): string {
+  if (s.path.startsWith("/api/")) return s.path;
+  if (s.uploadedAt) return `${s.path}?v=${encodeURIComponent(s.uploadedAt)}`;
+  return s.path;
+}
+
 export default function StimuliPage() {
   const { toast } = useToast();
   const [data, setData] = useState<StimuliResponse | null>(null);
@@ -85,6 +97,58 @@ export default function StimuliPage() {
   const [reloadTick, setReloadTick] = useState(0);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
+  // Editable word drafts (stimulusKey -> current text). Refreshed on every load.
+  const [wordDrafts, setWordDrafts] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!data) return;
+    const drafts: Record<string, string> = {};
+    for (const cat of data.categories) {
+      for (const item of cat.items) {
+        if (item.type === "word") drafts[item.stimulusKey] = item.path;
+      }
+    }
+    setWordDrafts((prev) => ({ ...prev, ...drafts }));
+  }, [data]);
+
+  const saveWord = async (item: StimulusItem) => {
+    const text = (wordDrafts[item.stimulusKey] ?? "").trim();
+    if (text.length === 0) {
+      toast({ title: "واژه نمی‌تواند خالی باشد", variant: "destructive" });
+      return;
+    }
+    if (text === item.path) return;
+    setBusyKey(item.stimulusKey);
+    try {
+      const res = await fetch("/api/admin/stimuli", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stimulusKey: item.stimulusKey, path: text }),
+      });
+      if (res.status === 401) {
+        window.location.href = "/admin/login";
+        return;
+      }
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        toast({
+          title: "ذخیره ناموفق بود",
+          description: payload.error ?? `خطای سرور (${res.status})`,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: "واژه ذخیره شد",
+        description: `${item.stimulusKey} — برای جلسه‌های جدید اعمال می‌شود.`,
+      });
+      setReloadTick((t) => t + 1);
+    } catch {
+      toast({ title: "خطای شبکه", description: "دوباره تلاش کنید.", variant: "destructive" });
+    } finally {
+      setBusyKey(null);
+    }
+  };
 
   useEffect(() => {
     const ac = new AbortController();
@@ -266,7 +330,7 @@ export default function StimuliPage() {
                     </div>
                     <CardDescription>
                       {isWord
-                        ? "محرک‌های واژگانی ویژگی (attribute) — فهرست استاندارد IAT"
+                        ? "محرک‌های واژگانی ویژگی (attribute) — متن هر واژه را ویرایش کنید و ذخیره بزنید؛ تغییرات برای جلسه‌های جدید اعمال می‌شود"
                         : "محرک‌های تصویری هدف (target) — برای هر اسلات، توضیح محتوای مجاز و دکمه‌ی بارگذاری نمایش داده می‌شود"}
                     </CardDescription>
                     {generalSpec && (
@@ -283,7 +347,7 @@ export default function StimuliPage() {
                           <li key={s.id} className="flex gap-3 rounded-md border p-3">
                             <div className="shrink-0 space-y-1.5 text-center">
                               <img
-                                src={`${s.path}${s.uploadedAt ? `?v=${encodeURIComponent(s.uploadedAt)}` : ""}`}
+                                src={thumbSrc(s)}
                                 alt={`محرک ${categoryTitle(category)} — ${s.stimulusKey}`}
                                 className="h-20 w-16 object-cover border rounded bg-muted"
                               />
@@ -362,31 +426,60 @@ export default function StimuliPage() {
                         ))}
                       </ul>
                     ) : (
-                      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4 max-h-72 overflow-y-auto scrollbar-thin">
-                        {items.map((s) => (
-                          <li
-                            key={s.id}
-                            className="flex flex-col items-center gap-1.5 rounded-md border p-2.5 text-center"
-                            title={s.description ?? s.label ?? s.stimulusKey}
-                          >
-                            <span className="flex h-14 w-14 items-center justify-center text-lg font-semibold leading-tight">
-                              {s.path}
-                            </span>
-                            <span className="font-mono text-[10px] text-muted-foreground" dir="ltr">
-                              {s.stimulusKey}
-                            </span>
-                            {s.label && (
-                              <span className="text-[10px] text-muted-foreground" dir="ltr">
-                                {s.label}
-                              </span>
-                            )}
-                            {!s.active && (
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                                غیرفعال
-                              </Badge>
-                            )}
-                          </li>
-                        ))}
+                      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 max-h-80 overflow-y-auto scrollbar-thin">
+                        {items.map((s) => {
+                          const draft = wordDrafts[s.stimulusKey] ?? s.path;
+                          const dirty = draft.trim() !== s.path && draft.trim().length > 0;
+                          return (
+                            <li
+                              key={s.id}
+                              className="flex flex-col gap-2 rounded-md border p-3"
+                              title={s.description ?? s.label ?? s.stimulusKey}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-mono text-[10px] text-muted-foreground" dir="ltr">
+                                  {s.stimulusKey}
+                                </span>
+                                {s.label && (
+                                  <span className="text-[10px] text-muted-foreground" dir="ltr">
+                                    {s.label}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  value={draft}
+                                  onChange={(e) =>
+                                    setWordDrafts((prev) => ({ ...prev, [s.stimulusKey]: e.target.value }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") void saveWord(s);
+                                  }}
+                                  disabled={busyKey === s.stimulusKey}
+                                  className="h-9 text-base font-semibold"
+                                  maxLength={40}
+                                  aria-label={`واژه‌ی ${s.stimulusKey}`}
+                                />
+                                <Button
+                                  size="sm"
+                                  variant={dirty ? "default" : "outline"}
+                                  className="gap-1.5 h-9 shrink-0"
+                                  disabled={busyKey === s.stimulusKey || !dirty}
+                                  onClick={() => void saveWord(s)}
+                                >
+                                  {busyKey === s.stimulusKey ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : dirty ? (
+                                    <Check className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  )}
+                                  ذخیره
+                                </Button>
+                              </div>
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                   </CardContent>
@@ -419,7 +512,11 @@ export default function StimuliPage() {
                     </code>
                   </li>
                   <li className="flex flex-col gap-1 rounded-md border bg-muted/30 p-3">
-                    <span className="text-xs font-semibold">۲. واژه‌های ویژگی</span>
+                    <span className="text-xs font-semibold">۲. واژه‌های ویژگی (ویرایش از همین صفحه)</span>
+                    <span className="text-xs leading-relaxed text-muted-foreground">
+                      متن هر واژه را در کادر مخصوص همان واژه بنویسید و «ذخیره» را بزنید. تغییرات فقط برای
+                      جلسه‌های جدید اعمال می‌شود؛ جلسه‌های آرشیوشده با همان واژه‌های اجراشده باقی می‌مانند.
+                    </span>
                     <code dir="ltr" className="block text-left font-mono text-xs text-muted-foreground whitespace-pre-wrap">
                       {guide.attributeWords}
                     </code>
