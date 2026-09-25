@@ -24,14 +24,14 @@ export default function RootLayout({
       <head>
         <link
           rel="preload"
-          href="/fonts/Vazirmatn-Regular.woff2"
+          href="/fonts/nazanin-regular.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
         />
         <link
           rel="preload"
-          href="/fonts/Vazirmatn-SemiBold.woff2"
+          href="/fonts/nazanin-bold.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
