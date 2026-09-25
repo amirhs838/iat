@@ -234,3 +234,27 @@ Work Log:
 Stage Summary:
 - Live on production with B Nazanin + standardized stimulus set v1.3.0
 - METHODOLOGICAL NOTE (must disclose): current face stimuli are AI-generated placeholders chosen for consistency; replace with real photos via admin panel before final data collection and disclose stimulus source in thesis
+
+---
+Task ID: stimuli-real-photos-1
+Agent: Z.ai Code (main)
+Task: Replace all target stimuli with REAL photographs (user rejected AI images as "فیکه"), from standard sources, face close-up frontal, gender-balanced, clearly distinguishable Iranian/Afghan
+
+Work Log:
+- Discovered v1.4.0 commit (471aadb) was UNPUSHED (origin/main at 3158150) and its image files on disk were still the v1.3.0 AI-generated portraits — only admin upload/inline-word-edit plumbing + an empty ATTRIBUTION.md template had shipped
+- Sourced candidates: 3 rounds of z-ai image-search (40+40+24 URLs), fresh Openverse API queries (102 URLs), and Wikimedia Commons API search (98 candidates downloaded after sequential+delay retry to dodge 403/429 throttling)
+- Visually vetted every candidate via labeled contact sheets (Read tool); rejected watermarked stock (Alamy/123RF/Dreamstime), AI-generated (Leonardo.Ai), famous persons (Khamenei, Malala), children, group shots, profiles, sunglasses, covered faces
+- Final 16 curated (4 men + 4 women per category), cropped to 480x600 JPEG q88 (sharp, EXIF-rotated, face-dominant, attention strategy + 2 manual crops for group photos); afghan-08 re-cropped 3x to isolate subject
+- Sources: Wikimedia Commons CC BY/CC BY-SA (Man in Kabul, Afghanistan man, Iranian girl), Flickr CC BY (Hamed Saber ×3, kamshots, Jeremy Weate, DVIDSHUB, ResoluteSupportMedia), Flickr CC BY-ND (hapal "Mustache man" — ND flagged), web image search (Reddit/Kaleidoscope/The Guardian/NYT/Eurac — 4 unknown-license slots flagged for vetting)
+- Filled ATTRIBUTION.md: full per-slot provenance + license table + 4 methodological caveats (Afghan men age skew 40-70, iranian-07 winter beanie vs roosari, distinctiveness basis, 4 unknown licenses) + researcher obligations
+- Bumped test definition to v1.5.0; CHANGELOG documents that v1.4.0 never actually replaced the files; rewrote STIMULUS_SPEC + STIMULUS_SPEC_GENERAL to describe actual shipped photos (Persian); targets comment updated
+- eslint.config.mjs + .gitignore: excluded tool-results/ (temp research scripts caused 26 lint errors); git rm --cached tool-results/ (previously tracked)
+- Re-seeded local DB: test version iranian-afghan-att v1.5.0 + 32 stimuli; lint clean
+- Browser E2E (agent-browser): homepage renders B Nazanin RTL; admin login OK; محرک‌ها panel shows v1.5.0 + real-photo thumbnails + per-slot upload + spec cards; inline attribute word edit (pos-01 عشق→مهر) persisted across reload, then reverted; participant flow consent→demographics→block1 trial renders NEW real photo with on-screen category buttons; no console errors
+- Committed 153a835 "Replace target stimuli with curated real photographs (v1.5.0)"
+- PUSH BLOCKED: no GitHub credentials available (old PAT was one-time and per security advice should be revoked); Vercel auto-deploy will trigger once pushed
+
+Stage Summary:
+- LOCAL COMPLETE + VERIFIED: real-photo stimulus set v1.5.0 (16 files, 728KB→~1MB), attribution documented, admin text-editing confirmed working
+- TO DEPLOY: push main (needs fresh GitHub token from user) → Vercel auto-builds → re-seed prod DB (bun run db:seed with prod env) → verify iat-seven.vercel.app
+- Screenshots: tool-results/v15-home.png, v15-stimuli-panel2.png, v15-block1-trial.png, shipped-v15.jpg
