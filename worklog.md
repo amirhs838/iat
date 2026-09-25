@@ -215,3 +215,22 @@ Stage Summary:
 - DB: Neon Postgres, isolated "iat" database on user's existing instance; Prisma 6.19.2 postgresql provider
 - Credentials unchanged: admin / iat-admin-2024 (user should change in admin Settings)
 - User advised to revoke both the GitHub PAT and the Vercel token shared in chat
+
+---
+Task ID: font-stimuli-1
+Agent: Z.ai Code (main)
+Task: B Nazanin font + standardized stimulus set (frontal face-only, gender-balanced, clear Iranian/Afghan distinction)
+
+Work Log:
+- Verified config already standard: 8+8 target exemplars (4 men + 4 women per category), matching 7-block IAT conventions; issue was image quality, not counts
+- Assessed existing photos: earbuds, hats, side angles, mixed ages (confound), inconsistent backgrounds, ambiguous group distinction -> replacement justified
+- B Nazanin webfont: fetched from fontcdn.ir (followed 307 to fdn host), self-hosted woff2/woff/ttf (regular+bold) in public/fonts; registered @font-face (400/700); --font-sans and html font-family updated to "B Nazanin" with Vazirmatn fallback (covers 500/600 weights Nazanin lacks); layout preloads swapped to nazanin woff2
+- Generated 16 standardized portraits (z-ai image CLI, 1024x1024, ~40s each; one batch crashed on timeout and was resumed): systematic group cues — Iranian: Persian features, modern short hair, light/trimmed stubble, dark roosari covering hair only (women); Afghan: Pashtun/Hazara features, full beards, perahan tunban collar (men), colored traditional scarf draped over head+shoulders (women, incl. Hazara East-Asian-influenced features); all frontal, direct gaze, neutral expression, uniform light-gray background, ages 20-35
+- Processed with sharp: 480x480 cover JPEG q85, replaced public/iat/stimuli/{iranian,afghan}/XX.jpg (total 728K)
+- Rewrote STIMULUS_SPEC_GENERAL + STIMULUS_SPEC (per-slot gender/age/appearance in Persian); bumped test version 1.2.0 -> 1.3.0; provenance comment documents AI-generated placeholder status
+- Re-seeded prod Neon DB: test version v1.3.0 snapshot + 32 stimuli rows updated
+- Deploy dpl_E6mwGcBE... READY; verified on production: fonts 200, images 200, homepage renders in B Nazanin (screenshot tool-results/prod-nazanin.png), admin stimuli panel shows v1.3.0 with new thumbnails (tool-results/local-stimuli-panel.png); no console errors
+
+Stage Summary:
+- Live on production with B Nazanin + standardized stimulus set v1.3.0
+- METHODOLOGICAL NOTE (must disclose): current face stimuli are AI-generated placeholders chosen for consistency; replace with real photos via admin panel before final data collection and disclose stimulus source in thesis
